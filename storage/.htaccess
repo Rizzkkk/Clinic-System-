@@ -1,0 +1,10 @@
+# Uploaded/generated files must not be fetched directly over HTTP.
+# They are served through an authenticated PHP endpoint instead (respects login + RBAC).
+
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+</IfModule>

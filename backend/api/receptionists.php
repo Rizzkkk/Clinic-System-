@@ -1,0 +1,103 @@
+<?php
+// Receptionists staff directory API (admin-only via RBAC).
+//   GET  ?api=get_staff -> JSON array
+//   GET  ?api=get_stats -> { total, active }
+//   POST action=add_staff   -> { success, message }
+//   POST action=delete_staff (id) -> { success }
+//
+// Auth (session + login guard) and $conn come from bootstrap.
+
+require_once __DIR__ . '/../auth/bootstrap.php';
+require_once __DIR__ . '/../lib/response.php';
+require_once __DIR__ . '/../auth/rbac.php';
+require_module_access('receptionists');
+
+// ----- Writes -------------------------------------------------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    $action = $_POST['action'];
+
+    if ($action === 'add_staff') {
+        $firstName  = $_POST['firstName']  ?? '';
+        $lastName   = $_POST['lastName']   ?? '';
+        $middleName = $_POST['middleName'] ?? '';
+        $employeeId = $_POST['employeeId'] ?? '';
+        $shift      = $_POST['shift']      ?? '';
+        $phone      = $_POST['phone']      ?? '';
+        $email      = $_POST['email']      ?? '';
+        $dob        = ($_POST['dob'] ?? '') !== '' ? $_POST['dob'] : null;
+        $deskNo = $_POST['deskNo'] ?? '';
+
+        if ($firstName === '' || $lastName === '' || $employeeId === '') {
+            json_fail('First name, last name, and employee ID are required.');
+        }
+
+        $stmt = $conn->prepare('
+            INSERT INTO receptionists (firstName, lastName, middleName, employeeId, shift, phone, email, dob, deskNo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ');
+        $stmt->bind_param('sssssssss', $firstName, $lastName, $middleName, $employeeId, $shift, $phone, $email, $dob, $deskNo);
+
+        if ($stmt->execute()) {
+            json_ok(['message' => 'Receptionist registered successfully']);
+        }
+        error_log('receptionists add_staff failed: ' . $stmt->error);
+        json_fail('Could not register the staff member. Check the details (employee ID must be unique).');
+    }
+
+    if ($action === 'update_staff') {
+        $id         = (int) ($_POST['id'] ?? 0);
+        $firstName  = $_POST['firstName']  ?? '';
+        $lastName   = $_POST['lastName']   ?? '';
+        $middleName = $_POST['middleName'] ?? '';
+        $employeeId = $_POST['employeeId'] ?? '';
+        $shift      = $_POST['shift']      ?? '';
+        $phone      = $_POST['phone']      ?? '';
+        $email      = $_POST['email']      ?? '';
+        $dob        = ($_POST['dob'] ?? '') !== '' ? $_POST['dob'] : null;
+        $deskNo     = $_POST['deskNo'] ?? '';
+        if (!$id || $firstName === '' || $lastName === '' || $employeeId === '') {
+            json_fail('Record, first name, last name, and employee ID are required.');
+        }
+        $stmt = $conn->prepare('UPDATE receptionists SET firstName=?, lastName=?, middleName=?, employeeId=?, shift=?, phone=?, email=?, dob=?, deskNo=? WHERE id=?');
+        $stmt->bind_param('sssssssssi', $firstName, $lastName, $middleName, $employeeId, $shift, $phone, $email, $dob, $deskNo, $id);
+        if ($stmt->execute()) {
+            json_ok(['message' => 'Receptionist updated successfully']);
+        }
+        error_log('receptionists update_staff failed: ' . $stmt->error);
+        json_fail('Could not update the staff member.');
+    }
+
+    if ($action === 'delete_staff') {
+        $id = (int) ($_POST['id'] ?? 0);
+        $stmt = $conn->prepare('DELETE FROM receptionists WHERE id = ?');
+        $stmt->bind_param('i', $id);
+
+        if ($stmt->execute()) {
+            json_ok();
+        }
+        error_log('receptionists delete_staff failed: ' . $stmt->error);
+        json_fail('Could not delete the staff member.');
+    }
+
+    json_fail('Unknown action.');
+}
+
+// ----- Reads --------------------------------------------------------------
+$api = $_GET['api'] ?? '';
+
+if ($api === 'get_staff') {
+    $result = $conn->query('SELECT * FROM receptionists ORDER BY created_at DESC');
+    $rows = [];
+    while ($row = $result->fetch_assoc()) {
+        $rows[] = $row;
+    }
+    json_response($rows);
+}
+
+if ($api === 'get_stats') {
+    $total  = (int) $conn->query('SELECT COUNT(*) AS c FROM receptionists')->fetch_assoc()['c'];
+    $active = (int) $conn->query("SELECT COUNT(*) AS c FROM receptionists WHERE status = 'Active'")->fetch_assoc()['c'];
+    json_response(['total' => $total, 'active' => $active]);
+}
+
+json_fail('Unknown endpoint.', 404);
