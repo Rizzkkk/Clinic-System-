@@ -1,122 +1,15 @@
 <?php
-session_start();
-require_once __DIR__ . '/db.php';
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: index.php');
-    exit;
+require_once __DIR__ . '/backend/auth/bootstrap.php';
+// Backward-compat: this page's data API now lives in backend/api/medical_records.php.
+if (!empty($_GET['api']) || ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']))) {
+    require __DIR__ . '/backend/api/medical_records.php';
 }
 
-// Handle AJAX requests for medical records operations
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    header('Content-Type: application/json');
-    
-    $action = $_POST['action'];
-    
-    if ($action === 'add_record') {
-        $patientId = $_POST['patientId'] ?? '';
-        $recordType = $_POST['recordType'] ?? '';
-        $recordDate = $_POST['recordDate'] ?? '';
-        $description = $_POST['description'] ?? '';
-        $findings = $_POST['findings'] ?? '';
-        $recommendations = $_POST['recommendations'] ?? '';
-        $physician = $_POST['physician'] ?? '';
-        $department = $_POST['department'] ?? '';
-        $chiefComplaint = $_POST['chiefComplaint'] ?? '';
-        $diagnosis = $_POST['diagnosis'] ?? '';
-        $clinicalNotes = $_POST['clinicalNotes'] ?? '';
-        $prescription = $_POST['prescription'] ?? '';
-        $bloodPressure = $_POST['bloodPressure'] ?? '';
-        $heartRate = $_POST['heartRate'] ?? '';
-        $temperature = $_POST['temperature'] ?? '';
-        $weight = $_POST['weight'] ?? '';
-        $allergies = $_POST['allergies'] ?? '';
-        $attachments = $_POST['attachments'] ?? '';
+require_once __DIR__ . '/backend/auth/rbac.php';
+require_module_access('medical_records');
+$canWriteMr = can_access('medical_records', 'write');
 
-        $stmt = $conn->prepare('
-            INSERT INTO medical_records (patientId, recordType, recordDate, description, findings, recommendations, physician, department, chiefComplaint, diagnosis, clinicalNotes, prescription, bloodPressure, heartRate, temperature, weight, allergies, attachments) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ');
-        
-        $stmt->bind_param('isssssssssssssssss',
-            $patientId,
-            $recordType,
-            $recordDate,
-            $description,
-            $findings,
-            $recommendations,
-            $physician,
-            $department,
-            $chiefComplaint,
-            $diagnosis,
-            $clinicalNotes,
-            $prescription,
-            $bloodPressure,
-            $heartRate,
-            $temperature,
-            $weight,
-            $allergies,
-            $attachments
-        );
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Medical record added successfully']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Error: ' . $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    } elseif ($action === 'delete_record') {
-        $id = (int)$_POST['id'];
-        $stmt = $conn->prepare('DELETE FROM medical_records WHERE id = ?');
-        $stmt->bind_param('i', $id);
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'message' => $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    }
-}
-
-// Get all medical records for API response
-if (isset($_GET['api']) && $_GET['api'] === 'get_records') {
-    header('Content-Type: application/json');
-    
-    $result = $conn->query('
-        SELECT mr.id, mr.patientId, mr.recordType, mr.recordDate, mr.description, mr.findings, mr.recommendations,
-               p.firstName as patientFirstName, p.lastName as patientLastName
-        FROM medical_records mr 
-        JOIN patients p ON mr.patientId = p.id 
-        ORDER BY mr.recordDate DESC
-    ');
-    $records = [];
-    
-    while ($row = $result->fetch_assoc()) {
-        $records[] = $row;
-    }
-    
-    echo json_encode($records);
-    exit;
-}
-
-// Get statistics
-if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
-    header('Content-Type: application/json');
-    
-    $total = $conn->query('SELECT COUNT(*) as count FROM medical_records')->fetch_assoc()['count'];
-    $recentMonth = $conn->query('SELECT COUNT(*) as count FROM medical_records WHERE recordDate >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)')->fetch_assoc()['count'];
-    
-    echo json_encode([
-        'total' => $total,
-        'recentMonth' => $recentMonth
-    ]);
-    exit;
-}
-
+// --- Server-rendered table data below (uses $conn from bootstrap) ---
 function h($value) {
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
@@ -257,70 +150,7 @@ $activeCases = (int) ($conn->query('SELECT COUNT(*) as count FROM medical_record
 </head>
 <body class="bg-background text-on-background font-body-md overflow-hidden">
 <!-- SideNavBar -->
-<aside class="fixed h-screen w-sidebar-width left-0 top-0 flex flex-col py-container-padding z-50" style="background-color: #00685D;">
-<div class="px-6 mb-8">
-<h1 class="text-headline-md font-headline-md font-bold text-surface-container-lowest">ASCLEPIUS Medical &<br> Diagnostic Group Inc.</h1>
-<p class="text-label-bold text-surface-variant/60 font-label-bold">Laboratory Information System</p>
-</div>
-<nav class="flex-1 space-y-1">
-
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dashboard.php">
-<span class="material-symbols-outlined">dashboard</span>
-<span class="font-label-bold text-label-bold">Dashboard</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Patient.php">
-<span class="material-symbols-outlined">group</span>
-<span class="font-label-bold text-label-bold">Patients</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Doctor.php">
-<span class="material-symbols-outlined">biotech</span>
-<span class="font-label-bold text-label-bold">Doctors</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Appointment.php">
-<span class="material-symbols-outlined">receipt_long</span>
-<span class="font-label-bold text-label-bold">Appointment</span>
-</a>
-
-<a class="flex items-center gap-3 px-3 py-2 bg-surface-variant/20 text-surface-bright rounded-lg mx-2 my-1 opacity-100 transition-colors" href="#">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Medical Records</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Laboratory Result.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Laboratory Results</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Agency Referral.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Agency Referral</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Prescription.php">
-<span class="material-symbols-outlined">description</span>
-<span class="font-label-bold text-label-bold">Prescription</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Biling.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Billing</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dental.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Dental</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="X-ray.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">X-Ray</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Psych.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Psych</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-error/80 hover:text-error hover:bg-error/10 mx-2 my-1 opacity-70 transition-colors" href="index.php" onclick="localStorage.clear();">
-<span class="material-symbols-outlined">logout</span>
-<span class="font-label-bold text-label-bold">Logout</span>
-</a>
-</nav>
-
-</div>
-</aside>
+<?php $active = 'medical_records'; require __DIR__ . '/frontend/partials/sidebar.php'; ?>
 <!-- Main Workspace -->
 <main class="ml-[260px] h-screen flex flex-col">
 <!-- TopAppBar -->
@@ -358,49 +188,41 @@ $activeCases = (int) ($conn->query('SELECT COUNT(*) as count FROM medical_record
 <h2 class="text-headline-lg font-headline-lg text-on-surface">Patient Records</h2>
 <p class="text-on-surface-variant text-body-md">Manage clinical data and medical histories for all registered patients.</p>
 </div>
+<?php if ($canWriteMr): ?>
 <button class="bg-primary text-on-primary px-6 py-2.5 rounded-lg font-label-bold text-label-bold uppercase flex items-center gap-2 shadow-md hover:opacity-95 transition-all active:scale-95" onclick="openModal()">
 <span class="material-symbols-outlined" data-icon="person_add">person_add</span>
                     Create New Record
                 </button>
+<?php endif; ?>
 </div>
-<!-- Stats Overview - Bento Style -->
-<div class="grid grid-cols-1 md:grid-cols-4 gap-card-gap mb-8">
-<div class="bg-surface-container-lowest border border-outline-variant p-5 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer">
+<!-- Stats Overview -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-card-gap mb-8">
+<div class="bg-surface-container-lowest border border-outline-variant p-5 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]">
 <div class="flex justify-between items-start mb-4">
 <div class="p-2 bg-primary/10 text-primary rounded-lg">
 <span class="material-symbols-outlined" data-icon="group">group</span>
 </div>
-<span class="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">+12%</span>
 </div>
 <p class="text-on-surface-variant text-label-bold uppercase">Total Patients</p>
 <h3 class="text-headline-lg font-headline-lg mt-1"><?php echo h($totalPatients); ?></h3>
 </div>
-<div class="bg-surface-container-lowest border border-outline-variant p-5 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer">
+<div class="bg-surface-container-lowest border border-outline-variant p-5 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)]">
 <div class="flex justify-between items-start mb-4">
 <div class="p-2 bg-secondary/10 text-secondary rounded-lg">
-<span class="material-symbols-outlined" data-icon="medical_services">medical_services</span>
+<span class="material-symbols-outlined" data-icon="clinical_notes">clinical_notes</span>
 </div>
 </div>
-<p class="text-on-surface-variant text-label-bold uppercase">Active Cases</p>
-<h3 class="text-headline-lg font-headline-lg mt-1">0</h3>
+<p class="text-on-surface-variant text-label-bold uppercase">Total Records</p>
+<h3 class="text-headline-lg font-headline-lg mt-1"><?php echo h(count($medicalRecordRows)); ?></h3>
 </div>
-<div class="bg-surface-container-lowest border border-outline-variant p-5 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer">
-<div class="flex justify-between items-start mb-4">
-<div class="p-2 bg-tertiary/10 text-tertiary rounded-lg">
-<span class="material-symbols-outlined" data-icon="pending_actions">pending_actions</span>
-</div>
-</div>
-<p class="text-on-surface-variant text-label-bold uppercase">Pending Reviews</p>
-<h3 class="text-headline-lg font-headline-lg mt-1">0</h3>
-</div>
-<div class="bg-surface-container-lowest border border-outline-variant p-5 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] border-l-4 border-l-primary hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer">
+<div class="bg-surface-container-lowest border border-outline-variant p-5 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.02)] border-l-4 border-l-primary">
 <div class="flex justify-between items-start mb-4">
 <div class="p-2 bg-primary/10 text-primary rounded-lg">
-<span class="material-symbols-outlined" data-icon="verified">verified</span>
+<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
 </div>
 </div>
-<p class="text-on-surface-variant text-label-bold uppercase">Accuracy Rate</p>
-<h3 class="text-headline-lg font-headline-lg mt-1">0%</h3>
+<p class="text-on-surface-variant text-label-bold uppercase">Records (Last 30 Days)</p>
+<h3 class="text-headline-lg font-headline-lg mt-1"><?php echo h($activeCases); ?></h3>
 </div>
 </div>
 <!-- Data Table Container -->
@@ -435,8 +257,10 @@ $activeCases = (int) ($conn->query('SELECT COUNT(*) as count FROM medical_record
 <td class="px-6 py-4 text-body-sm text-on-surface-variant"><?php echo h($record['recordDate']); ?></td>
 <td class="px-6 py-4 text-body-sm text-on-surface-variant"><?php echo h($record['physician'] ?: 'Not assigned'); ?></td>
 <td class="px-6 py-4"><span class="px-3 py-1 rounded-full bg-primary-fixed text-on-primary-fixed text-label-bold uppercase"><?php echo h($record['status'] ?: 'Active'); ?></span></td>
-<td class="px-6 py-4 text-right">
-<button type="button" onclick="openRecordDetailModal(<?php echo h($record['id']); ?>)" class="p-2 rounded hover:bg-surface-container-high text-on-surface-variant" title="View patient and physician details">
+<td class="px-6 py-4 text-right whitespace-nowrap">
+<a target="_blank" rel="noopener" href="Medical Records.php?api=record_pdf&amp;id=<?php echo (int)$record['id']; ?>" class="inline-flex p-2 rounded hover:bg-surface-container-high text-primary align-middle" title="Print medical report (PDF)"><span class="material-symbols-outlined">picture_as_pdf</span></a>
+<?php if ($canWriteMr): ?><button type="button" onclick="editMedicalRecord(<?php echo (int)$record['id']; ?>)" class="p-2 rounded hover:bg-surface-container-high text-primary align-middle" title="Edit"><span class="material-symbols-outlined">edit</span></button><?php endif; ?>
+<button type="button" onclick="openRecordDetailModal(<?php echo h($record['id']); ?>)" class="p-2 rounded hover:bg-surface-container-high text-on-surface-variant align-middle" title="View patient and physician details">
 <span class="material-symbols-outlined">visibility</span>
 </button>
 </td>
@@ -449,56 +273,8 @@ $activeCases = (int) ($conn->query('SELECT COUNT(*) as count FROM medical_record
 <!-- Pagination Footer -->
 <div class="bg-surface-container-low px-6 py-4 border-t border-outline-variant flex items-center justify-between">
 <p class="text-body-sm text-on-surface-variant">Showing <?php echo count($medicalRecordRows); ?> records</p>
-<div class="flex items-center gap-1">
-<button class="p-2 rounded hover:bg-surface-container-high text-on-surface-variant disabled:opacity-30" disabled="">
-<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
-</button>
-<button class="w-8 h-8 rounded bg-primary text-on-primary text-label-bold">1</button>
-<button class="w-8 h-8 rounded hover:bg-surface-container-high text-on-surface-variant text-label-bold">2</button>
-<button class="w-8 h-8 rounded hover:bg-surface-container-high text-on-surface-variant text-label-bold">3</button>
-<span class="mx-1 text-on-surface-variant">...</span>
-<button class="w-8 h-8 rounded hover:bg-surface-container-high text-on-surface-variant text-label-bold">1248</button>
-<button class="p-2 rounded hover:bg-surface-container-high text-on-surface-variant">
-<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
-</button>
-</div>
 </div>
 </section>
-<!-- Floating Progress Tracker for Background Laboratory Tasks (Interactive Microui) -->
-<div class="fixed bottom-6 right-6 w-80 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-2xl p-4 transition-transform translate-y-0 z-50 hover:shadow-3xl hover:scale-[1.02] transition-all duration-300 cursor-pointer" id="task-panel">
-<div class="flex items-center justify-between mb-3">
-<div class="flex items-center gap-2">
-<span class="relative flex h-2 w-2">
-<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-<span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-</span>
-<h4 class="text-label-bold font-label-bold uppercase text-on-surface">Lab Processing</h4>
-</div>
-<button class="text-on-surface-variant hover:text-error transition-colors" onclick="document.getElementById('task-panel').style.display='none'">
-<span class="material-symbols-outlined text-lg" data-icon="close">close</span>
-</button>
-</div>
-<div class="space-y-4">
-<div>
-<div class="flex justify-between text-[11px] mb-1">
-<span class="font-medium text-on-surface">DNA Sequencing - Batch A4</span>
-<span class="text-primary font-bold">72%</span>
-</div>
-<div class="w-full bg-surface-container-high rounded-full h-1.5">
-<div class="bg-primary h-1.5 rounded-full" style="width: 72%"></div>
-</div>
-</div>
-<div>
-<div class="flex justify-between text-[11px] mb-1">
-<span class="font-medium text-on-surface">Hematology Auto-Scan</span>
-<span class="text-primary font-bold">24%</span>
-</div>
-<div class="w-full bg-surface-container-high rounded-full h-1.5">
-<div class="bg-primary h-1.5 rounded-full" style="width: 24%"></div>
-</div>
-</div>
-</div>
-</div>
 </main>
 <!-- Medical Record Modal -->
 <div id="medicalRecordModal" class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center">
@@ -541,7 +317,9 @@ $activeCases = (int) ($conn->query('SELECT COUNT(*) as count FROM medical_record
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div class="space-y-1.5">
 <label class="text-label-bold text-on-surface-variant block">Primary Physician *</label>
-<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="physician" required placeholder="Dr. Name"/>
+<select id="physicianSelect" class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" name="physician" required>
+<option value="">Select physician</option>
+</select>
 </div>
 <div class="space-y-1.5">
 <label class="text-label-bold text-on-surface-variant block">Department *</label>
@@ -668,6 +446,8 @@ Create Record
 
 <script>
         const medicalRecords = <?php echo json_encode($medicalRecordRows, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+        let editingMrId = null;
+        let editingMrDate = null;
 
         function openRecordDetailModal(recordId) {
             const record = medicalRecords.find(r => parseInt(r.id, 10) === parseInt(recordId, 10));
@@ -720,12 +500,52 @@ Create Record
 
         // Modal functionality
         function openModal() {
+            editingMrId = null;
+            editingMrDate = null;
+            const _f = document.getElementById('medicalRecordForm');
+            if (_f) { _f.reset(); const _b = _f.querySelector('button[type="submit"]'); if (_b) _b.textContent = 'Create Record'; }
             const modal = document.getElementById('medicalRecordModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             document.body.style.overflow = 'hidden';
-                    // Load patients list when modal opens
+                    // Load patients + physicians list when modal opens
                     loadPatientsForModal();
+                    loadDoctorsForModal();
+        }
+
+        // Open the modal pre-filled to edit an existing record (from the medicalRecords cache).
+        async function editMedicalRecord(id) {
+            const r = medicalRecords.find(x => Number(x.id) === Number(id));
+            if (!r) return;
+            editingMrId = id;
+            editingMrDate = r.recordDate || null;
+            const modal = document.getElementById('medicalRecordModal');
+            modal.classList.remove('hidden'); modal.classList.add('flex'); document.body.style.overflow = 'hidden';
+            const hid = document.getElementById('selectedPatientId'); if (hid) hid.value = r.patientId || '';
+            await loadPatientsForModal();
+            await loadDoctorsForModal();
+            const f = document.getElementById('medicalRecordForm');
+            const set = (n, v) => { const el = f.elements[n]; if (el) el.value = (v == null) ? '' : v; };
+            set('mrn', 'MR-' + (r.patientId || ''));
+            set('dob', (r.dateOfBirth || '').slice(0, 10));
+            const gsel = f.elements['gender'];
+            if (gsel && r.gender) { const g = String(r.gender).toLowerCase(); gsel.value = g.startsWith('m') ? 'male' : (g.startsWith('f') ? 'female' : 'other'); }
+            const phys = document.getElementById('physicianSelect');
+            if (phys) {
+                phys.value = r.physician || '';
+                if (r.physician && phys.value !== r.physician) { const o = document.createElement('option'); o.value = r.physician; o.textContent = r.physician; phys.appendChild(o); phys.value = r.physician; }
+            }
+            set('department', r.department);
+            set('chiefComplaint', r.chiefComplaint);
+            set('diagnosis', r.diagnosis);
+            set('clinicalNotes', r.clinicalNotes);
+            set('prescription', r.prescription);
+            set('bloodPressure', r.bloodPressure);
+            set('heartRate', r.heartRate);
+            set('temperature', r.temperature);
+            set('weight', r.weight);
+            set('allergies', r.allergies);
+            const b = f.querySelector('button[type="submit"]'); if (b) b.textContent = 'Update Record';
         }
 
         function closeModal() {
@@ -765,10 +585,11 @@ Create Record
                 patientId = String(formValues.get('mrn') || '').replace(/\D/g, '');
             }
             const requestData = new FormData();
-            requestData.append('action', 'add_record');
+            requestData.append('action', editingMrId ? 'update_record' : 'add_record');
+            if (editingMrId) requestData.append('id', editingMrId);
             requestData.append('patientId', patientId);
             requestData.append('recordType', formValues.get('department') || 'General');
-            requestData.append('recordDate', new Date().toISOString().slice(0, 10));
+            requestData.append('recordDate', (editingMrId && editingMrDate) ? editingMrDate : new Date().toISOString().slice(0, 10));
             requestData.append('description', formValues.get('chiefComplaint') || '');
             requestData.append('findings', `${formValues.get('diagnosis') || ''}\n${formValues.get('clinicalNotes') || ''}`.trim());
             requestData.append('recommendations', formValues.get('prescription') || '');
@@ -884,6 +705,28 @@ Create Record
                 });
             } catch (err) {
                 console.error('Error loading patients for modal:', err);
+            }
+        }
+
+        // Populate physician select from the doctors table (value = doctor display name)
+        let doctorsLoaded = false;
+        async function loadDoctorsForModal() {
+            const select = document.getElementById('physicianSelect');
+            if (!select || doctorsLoaded) return;
+            try {
+                const res = await fetch('backend/api/doctors.php?api=get_doctors');
+                if (!res.ok) throw new Error('Failed to load doctors');
+                const doctors = await res.json();
+                doctors.forEach(d => {
+                    const name = `Dr. ${d.firstName || ''} ${d.lastName || ''}`.trim();
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name + (d.specialty ? ` — ${d.specialty}` : '');
+                    select.appendChild(opt);
+                });
+                doctorsLoaded = true;
+            } catch (err) {
+                console.error('Error loading doctors for modal:', err);
             }
         }
 

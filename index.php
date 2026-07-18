@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/backend/lib/session.php';
+asclepius_start_session();
 
 require_once __DIR__ . '/db.php';
 
@@ -12,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
   if ($email === '' || $password === '') {
     $loginError = 'Please enter both email and password.';
   } else {
-    $statement = $conn->prepare('SELECT id, full_name, password_hash FROM users WHERE email = ? LIMIT 1');
+    $statement = $conn->prepare('SELECT id, full_name, password_hash, role FROM users WHERE email = ? LIMIT 1');
     $statement->bind_param('s', $email);
     $statement->execute();
     $result = $statement->get_result();
@@ -22,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
       session_regenerate_id(true);
       $_SESSION['user_id'] = $user['id'];
       $_SESSION['user_name'] = $user['full_name'];
+      $_SESSION['user_role'] = $user['role'] ?? 'admin';
       header('Location: Dashboard.php');
       exit;
     }
@@ -344,7 +346,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
     <div class="left-section">
 
       <div class="branding">
-        <img src="ASCLEPIUS.jpg" class="logo" alt="Logo">
+        <img src="frontend/assets/img/ASCLEPIUS.jpg" class="logo" alt="Logo">
         <div class="company-text">
           <div class="company-main">ASCLEPIUS</div>
           <div class="company-sub">Medical & Diagnostic Group Inc.</div>
@@ -397,7 +399,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 
     <!-- Right -->
     <div class="right-section">
-      <img src="Doctors.webp" alt="Doctor">
+      <img src="frontend/assets/img/Doctors.webp" alt="Doctor">
     </div>
 
   </div>

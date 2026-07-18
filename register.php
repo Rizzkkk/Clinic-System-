@@ -1,5 +1,6 @@
 <?php
-session_start();
+require_once __DIR__ . '/backend/lib/session.php';
+asclepius_start_session();
 
 require_once __DIR__ . '/db.php';
 
@@ -26,11 +27,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_submit'])) {
       $registerError = 'An account with this email already exists. Please use a different email or login instead.';
     } else {
       $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-      $insertStatement = $conn->prepare('INSERT INTO users (full_name, email, password_hash) VALUES (?, ?, ?)');
-      $insertStatement->bind_param('sss', $fullName, $email, $passwordHash);
+      // New self-service accounts are created with no access ('pending'); an administrator must
+      // assign a real role (admin/doctor/reception/lab/cashier) before the account can be used.
+      $role = 'pending';
+      $insertStatement = $conn->prepare('INSERT INTO users (full_name, email, password_hash, role) VALUES (?, ?, ?, ?)');
+      $insertStatement->bind_param('ssss', $fullName, $email, $passwordHash, $role);
 
       if ($insertStatement->execute()) {
-        $registerSuccess = 'Account created successfully! You can now login.';
+        $registerSuccess = 'Account created. An administrator must assign your role before you can access the system.';
         $_POST = [];
       } else {
         $registerError = 'Unable to create your account right now. Please try again.';
@@ -312,7 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_submit'])) {
     <div class="left-section">
 
       <div class="branding">
-        <img src="ASCLEPIUS.jpg" class="logo" alt="Logo">
+        <img src="frontend/assets/img/ASCLEPIUS.jpg" class="logo" alt="Logo">
         <div class="company-text">
           <div class="company-main">ASCLEPIUS</div>
           <div class="company-sub">Medical & Diagnostic Group Inc.</div>
@@ -361,7 +365,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_submit'])) {
     </div>
 
     <div class="right-section">
-      <img src="Doctors.webp" alt="Doctor">
+      <img src="frontend/assets/img/Doctors.webp" alt="Doctor">
     </div>
 
   </div>

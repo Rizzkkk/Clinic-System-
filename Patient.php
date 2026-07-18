@@ -1,194 +1,14 @@
 <?php
-session_start();
-require_once __DIR__ . '/db.php';
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: index.php');
-    exit;
+require_once __DIR__ . '/backend/auth/bootstrap.php';
+// Backward-compat: other pages (Dashboard, Appointment, Medical Records) and this page's own JS
+// still call Patient.php?api=... or POST an action here. Delegate to the module's API handler.
+if (!empty($_GET['api']) || ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']))) {
+    require __DIR__ . '/backend/api/patients.php';
 }
-
-// Handle AJAX requests for patient operations
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    header('Content-Type: application/json');
-    
-    $action = $_POST['action'];
-    
-    if ($action === 'add_patient') {
-        $stmt = $conn->prepare('
-            INSERT INTO patients (firstName, lastName, middleName, dateOfBirth, gender, bloodType, phone, email, address, emergencyContact, emergencyPhone, medicalHistory, allergies, insurance_provider, insurance_number) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ');
-        
-        $stmt->bind_param('sssssssssssssss',
-            $_POST['firstName'],
-            $_POST['lastName'],
-            $_POST['middleName'],
-            $_POST['dateOfBirth'],
-            $_POST['gender'],
-            $_POST['bloodType'],
-            $_POST['phone'],
-            $_POST['email'],
-            $_POST['address'],
-            $_POST['emergencyContact'],
-            $_POST['emergencyPhone'],
-            $_POST['medicalHistory'],
-            $_POST['allergies'],
-            $_POST['insurance_provider'],
-            $_POST['insurance_number']
-        );
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Patient registered successfully']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Error: ' . $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    } elseif ($action === 'delete_patient') {
-        $id = (int)$_POST['id'];
-        $stmt = $conn->prepare('DELETE FROM patients WHERE id = ?');
-        $stmt->bind_param('i', $id);
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'message' => $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    } elseif ($action === 'add_contact') {
-        $stmt = $conn->prepare('
-            INSERT INTO patient_contacts (patientId, contactName, relationship, phoneNumber, email, address, isPrimary, notes) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ');
-        
-        $isPrimary = isset($_POST['isPrimary']) ? 1 : 0;
-        $stmt->bind_param('isssssis',
-            $_POST['patientId'],
-            $_POST['contactName'],
-            $_POST['relationship'],
-            $_POST['phoneNumber'],
-            $_POST['email'],
-            $_POST['address'],
-            $isPrimary,
-            $_POST['notes']
-        );
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Contact added successfully']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Error: ' . $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    } elseif ($action === 'delete_contact') {
-        $id = (int)$_POST['id'];
-        $stmt = $conn->prepare('DELETE FROM patient_contacts WHERE id = ?');
-        $stmt->bind_param('i', $id);
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'message' => $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    } elseif ($action === 'update_contact') {
-        $stmt = $conn->prepare('
-            UPDATE patient_contacts 
-            SET contactName = ?, relationship = ?, phoneNumber = ?, email = ?, address = ?, isPrimary = ?, notes = ?
-            WHERE id = ?
-        ');
-        
-        $isPrimary = isset($_POST['isPrimary']) ? 1 : 0;
-        $stmt->bind_param('sssssisi',
-            $_POST['contactName'],
-            $_POST['relationship'],
-            $_POST['phoneNumber'],
-            $_POST['email'],
-            $_POST['address'],
-            $isPrimary,
-            $_POST['notes'],
-            $_POST['id']
-        );
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Contact updated successfully']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Error: ' . $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    }
-}
-
-// Get all patients for API response
-if (isset($_GET['api']) && $_GET['api'] === 'get_patients') {
-    header('Content-Type: application/json');
-    
-    $result = $conn->query('SELECT * FROM patients ORDER BY created_at DESC');
-    $patients = [];
-    
-    while ($row = $result->fetch_assoc()) {
-        $patients[] = $row;
-    }
-    
-    echo json_encode($patients);
-    exit;
-}
-
-// Get statistics
-if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
-    header('Content-Type: application/json');
-    
-    $total = $conn->query('SELECT COUNT(*) as count FROM patients')->fetch_assoc()['count'];
-    $active = $conn->query("SELECT COUNT(*) as count FROM patients WHERE status = 'Active'")->fetch_assoc()['count'];
-    $inactive = $conn->query("SELECT COUNT(*) as count FROM patients WHERE status = 'Inactive'")->fetch_assoc()['count'];
-    
-    echo json_encode([
-        'total' => $total,
-        'active' => $active,
-        'inactive' => $inactive
-    ]);
-    exit;
-}
-
-// Get patient contacts
-if (isset($_GET['api']) && $_GET['api'] === 'get_contacts') {
-    header('Content-Type: application/json');
-    
-    $patientId = (int)$_GET['patientId'];
-    $result = $conn->query("SELECT * FROM patient_contacts WHERE patientId = $patientId ORDER BY isPrimary DESC, created_at DESC");
-    $contacts = [];
-    
-    while ($row = $result->fetch_assoc()) {
-        $contacts[] = $row;
-    }
-    
-    echo json_encode($contacts);
-    exit;
-}
-
-// Get all contacts (for reporting)
-if (isset($_GET['api']) && $_GET['api'] === 'get_all_contacts') {
-    header('Content-Type: application/json');
-    
-    $result = $conn->query('
-        SELECT pc.*, p.firstName as patientFirstName, p.lastName as patientLastName
-        FROM patient_contacts pc
-        JOIN patients p ON pc.patientId = p.id
-        ORDER BY pc.created_at DESC
-    ');
-    $contacts = [];
-    
-    while ($row = $result->fetch_assoc()) {
-        $contacts[] = $row;
-    }
-    
-    echo json_encode($contacts);
-    exit;
-}
+// Guard the page load itself so the HTML shell doesn't render for a role without access.
+require_once __DIR__ . '/backend/auth/rbac.php';
+require_module_access('patients');
+$canWritePatient = can_access('patients', 'write');
 ?>
 <!DOCTYPE html>
 
@@ -303,76 +123,7 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_all_contacts') {
 </head>
 <body class="bg-background text-on-surface overflow-hidden flex h-screen">
 <!-- SideNavBar Component -->
-<aside class="w-sidebar h-screen fixed left-0 top-0 flex flex-col py-6 text-surface-variant/70 z-50" style="background-color: #00685D;">
-<div class="px-6 mb-8">
-<h1 class="text-headline-md font-headline-md font-bold text-surface-container-lowest">ASCLEPIUS Medical &<br> Diagnostic Group Inc.</h1>
-<p class="text-label-bold text-surface-variant/60 font-label-bold">Laboratory Information System</p>
-</div>
-<nav class="flex-1 space-y-1">
-
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dashboard.php">
-<span class="material-symbols-outlined">dashboard</span>
-<span class="font-label-bold text-label-bold">Dashboard</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 bg-surface-variant/20 text-surface-bright rounded-lg mx-2 my-1 opacity-100 transition-colors" href="#">
-<span class="material-symbols-outlined">group</span>
-<span class="font-label-bold text-label-bold">Patients</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Doctor.php">
-<span class="material-symbols-outlined">biotech</span>
-<span class="font-label-bold text-label-bold">Doctors</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Appointment.php">
-<span class="material-symbols-outlined">receipt_long</span>
-<span class="font-label-bold text-label-bold">Appointment</span>
-</a>
-
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Medical Records.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Medical Records</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Laboratory Result.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Laboratory Results</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Agency Referral.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Agency Referral</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Prescription.php">
-<span class="material-symbols-outlined">description</span>
-<span class="font-label-bold text-label-bold">Prescription</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Biling.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Billing</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dental.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Dental</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="X-ray.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">X-Ray</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Psych.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Psych</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-error/80 hover:text-error hover:bg-error/10 mx-2 my-1 opacity-70 transition-colors" href="index.php" onclick="localStorage.clear();">
-<span class="material-symbols-outlined">logout</span>
-<span class="font-label-bold text-label-bold">Logout</span>
-</a>
-</nav>
-
-
-<footer class="mt-auto pt-6 px-4">
-
-
-</footer>
-
-
-</aside>
+<?php $active = 'patients'; require __DIR__ . '/frontend/partials/sidebar.php'; ?>
 <!-- Main Workspace -->
 <main class="ml-[260px] flex-1 flex flex-col h-screen overflow-hidden">
 <!-- TopNavBar Component -->
@@ -413,9 +164,11 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_all_contacts') {
 <div class="lg:col-span-8 bg-surface-container-lowest border border-outline-variant/50 rounded-xl overflow-hidden flex flex-col h-fit shadow-sm hover:shadow-md transition-shadow duration-300">
 <div class="px-6 py-5 flex justify-between items-center bg-surface-container-lowest/50">
 <h3 class="font-headline-md text-headline-md text-on-surface">Patient registry</h3>
+<?php if ($canWritePatient): ?>
 <button class="bg-primary hover:bg-primary-container text-white px-4 py-2 rounded-lg text-label-bold transition-colors" onclick="openModal()">
                             Register patient
                         </button>
+<?php endif; ?>
 </div>
 <div class="overflow-x-auto w-full">
 <table class="min-w-full w-full table-auto text-left border-collapse">
@@ -593,11 +346,30 @@ Register Patient
         });
 
         // Modal functionality
-        function openModal() {
+        function showPatientModal() {
             const modal = document.getElementById('patientModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             document.body.style.overflow = 'hidden';
+        }
+        function openModal() {
+            editingPatientId = null;
+            const f = document.getElementById('patientForm');
+            if (f) { f.reset(); const b = f.querySelector('button[type="submit"]'); if (b) b.textContent = 'Register Patient'; }
+            showPatientModal();
+        }
+        function editPatient(id) {
+            const p = patientsCache.find(x => String(x.id) === String(id));
+            if (!p) return;
+            editingPatientId = id;
+            const f = document.getElementById('patientForm');
+            const set = (n, v) => { const el = f.elements[n]; if (el) el.value = v ?? ''; };
+            set('firstName', p.firstName); set('lastName', p.lastName); set('middleName', p.middleName);
+            set('dob', p.dateOfBirth); set('gender', p.gender); set('phone', p.phone); set('email', p.email);
+            set('address', p.address); set('emergencyName', p.emergencyContact); set('emergencyPhone', p.emergencyPhone);
+            set('bloodType', p.bloodType); set('allergies', p.allergies);
+            const b = f.querySelector('button[type="submit"]'); if (b) b.textContent = 'Update Patient';
+            showPatientModal();
         }
 
         function closeModal() {
@@ -634,6 +406,8 @@ Register Patient
 
         let searchTerm = '';
         let patientsCache = [];
+        const CAN_WRITE = <?php echo $canWritePatient ? 'true' : 'false'; ?>;
+        let editingPatientId = null;
 
         function normalizePatientRecord(patient) {
             return {
@@ -653,7 +427,7 @@ Register Patient
         }
 
         async function loadPatientsFromServer() {
-            const response = await fetch('Patient.php?api=get_patients');
+            const response = await fetch('backend/api/patients.php?api=get_patients');
             if (!response.ok) {
                 throw new Error('Unable to load patients');
             }
@@ -691,8 +465,15 @@ Register Patient
         }
 
         async function savePatient(patientData) {
+            if (editingPatientId) {
+                const existing = patientsCache.find(p => String(p.id) === String(editingPatientId)) || {};
+                patientData.medicalHistory = patientData.medicalHistory || existing.medicalHistory || '';
+                patientData.insurance_provider = patientData.insurance_provider || existing.insurance_provider || '';
+                patientData.insurance_number = patientData.insurance_number || existing.insurance_number || '';
+            }
             const formData = new FormData();
-            formData.append('action', 'add_patient');
+            formData.append('action', editingPatientId ? 'update_patient' : 'add_patient');
+            if (editingPatientId) formData.append('id', editingPatientId);
             formData.append('firstName', patientData.firstName || 'Unknown');
             formData.append('lastName', patientData.lastName || 'Patient');
             formData.append('middleName', patientData.middleName || '');
@@ -709,7 +490,7 @@ Register Patient
             formData.append('insurance_provider', patientData.insurance_provider || '');
             formData.append('insurance_number', patientData.insurance_number || '');
 
-            const response = await fetch('Patient.php', {
+            const response = await fetch('backend/api/patients.php', {
                 method: 'POST',
                 body: formData
             });
@@ -753,14 +534,14 @@ Register Patient
             formData.append('action', 'delete_patient');
             formData.append('id', id);
 
-            const response = await fetch('Patient.php', {
+            const response = await fetch('backend/api/patients.php', {
                 method: 'POST',
                 body: formData
             });
 
             const result = await response.json();
             if (!result.success) {
-                alert(result.message || 'Unable to delete patient.');
+                showError(result.message || 'Unable to delete patient.');
                 return;
             }
 
@@ -778,11 +559,11 @@ Register Patient
                 <td class="px-6 py-4 text-body-sm">${patient.gender}</td>
                 <td class="px-6 py-4 text-body-sm">${patient.phone}</td>
                 <td class="px-6 py-4 text-body-sm">Just registered</td>
-                <td class="px-6 py-4 text-right">
-                    <button type="button" onclick="event.stopPropagation(); deletePatient('${patient.id}')" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-error hover:bg-error-container transition-colors">
-                        <span class="material-symbols-outlined text-[20px]">delete</span>
-                        <span class="text-label-bold">Delete</span>
-                    </button>
+                <td class="px-6 py-4 text-right whitespace-nowrap">
+                    ${CAN_WRITE ? `
+                    <button type="button" onclick="event.stopPropagation(); editPatient('${patient.id}')" class="inline-flex items-center px-3 py-2 rounded-lg text-primary hover:bg-primary/10 transition-colors" title="Edit"><span class="material-symbols-outlined text-[20px]">edit</span></button>
+                    <button type="button" onclick="event.stopPropagation(); deletePatient('${patient.id}')" class="inline-flex items-center px-3 py-2 rounded-lg text-error hover:bg-error-container transition-colors" title="Delete"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+                    ` : ''}
                 </td>
             `;
             return row;
@@ -872,7 +653,7 @@ Register Patient
                     showToast('Patient registered successfully.');
                 }, 1000);
             } catch (error) {
-                alert(error.message || 'Unable to save patient.');
+                showError(error.message || 'Unable to save patient.');
                 btn.innerText = originalText;
                 btn.classList.remove('bg-emerald-600', 'opacity-80', 'pointer-events-none');
                 btn.classList.add('bg-primary-container');
@@ -919,14 +700,14 @@ Register Patient
                     btn.innerText = originalText;
                     btn.classList.replace('bg-emerald-600', 'bg-primary');
                     btn.classList.remove('opacity-80', 'pointer-events-none');
+                    editingPatientId = null;
                     patientForm.reset();
                     closeModal();
                     loadPatients();
-                    addNotification(`New patient registered: ${patient.firstName} ${patient.lastName}`);
-                    showToast('New patient successfully registered.');
+                    showToast('Patient saved successfully.');
                 }, 800);
             } catch (error) {
-                alert(error.message || 'Unable to save patient.');
+                showError(error.message || 'Unable to save patient.');
                 btn.innerText = originalText;
                 btn.classList.remove('opacity-80', 'pointer-events-none');
                 btn.classList.add('bg-primary');

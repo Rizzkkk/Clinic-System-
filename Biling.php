@@ -1,118 +1,15 @@
 <?php
-session_start();
-require_once __DIR__ . '/db.php';
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: index.php');
-    exit;
+require_once __DIR__ . '/backend/auth/bootstrap.php';
+// Backward-compat: this page's data API now lives in backend/api/billing.php.
+if (!empty($_GET['api']) || ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']))) {
+    require __DIR__ . '/backend/api/billing.php';
 }
 
-// Handle AJAX requests for billing operations
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    header('Content-Type: application/json');
-    
-    $action = $_POST['action'];
-    
-    if ($action === 'add_bill') {
-        $stmt = $conn->prepare('
-            INSERT INTO billing (patientId, appointmentId, description, amount, status, billingDate, paymentMethod, notes) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        ');
-        
-        $appointmentId = !empty($_POST['appointmentId']) ? (int)$_POST['appointmentId'] : null;
-        
-        $stmt->bind_param('iisdssss',
-            $_POST['patientId'],
-            $appointmentId,
-            $_POST['description'],
-            $_POST['amount'],
-            $_POST['status'],
-            $_POST['billingDate'],
-            $_POST['paymentMethod'],
-            $_POST['notes']
-        );
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Bill created successfully']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Error: ' . $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    } elseif ($action === 'delete_bill') {
-        $id = (int)$_POST['id'];
-        $stmt = $conn->prepare('DELETE FROM billing WHERE id = ?');
-        $stmt->bind_param('i', $id);
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'message' => $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    } elseif ($action === 'update_payment_status') {
-        $id = (int)$_POST['id'];
-        $status = $_POST['status'];
-        $paymentDate = $_POST['paymentDate'];
-        $paymentMethod = $_POST['paymentMethod'];
-        
-        $stmt = $conn->prepare('UPDATE billing SET status = ?, paymentDate = ?, paymentMethod = ? WHERE id = ?');
-        $stmt->bind_param('sssi', $status, $paymentDate, $paymentMethod, $id);
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'message' => $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    }
-}
+require_once __DIR__ . '/backend/auth/rbac.php';
+require_module_access('billing');
+$canWriteBill = can_access('billing', 'write');
 
-// Get all bills for API response
-if (isset($_GET['api']) && $_GET['api'] === 'get_bills') {
-    header('Content-Type: application/json');
-    
-    $result = $conn->query('
-        SELECT b.id, b.patientId, b.description, b.amount, b.status, b.billingDate, b.paymentDate, b.paymentMethod, b.notes,
-               p.firstName as patientFirstName, p.lastName as patientLastName
-        FROM billing b 
-        JOIN patients p ON b.patientId = p.id 
-        ORDER BY b.billingDate DESC
-    ');
-    $bills = [];
-    
-    while ($row = $result->fetch_assoc()) {
-        $bills[] = $row;
-    }
-    
-    echo json_encode($bills);
-    exit;
-}
-
-// Get statistics
-if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
-    header('Content-Type: application/json');
-    
-    $total = $conn->query('SELECT COUNT(*) as count FROM billing')->fetch_assoc()['count'];
-    $pending = $conn->query("SELECT COUNT(*) as count FROM billing WHERE status = 'Pending'")->fetch_assoc()['count'];
-    $paid = $conn->query("SELECT COUNT(*) as count FROM billing WHERE status = 'Paid'")->fetch_assoc()['count'];
-    
-    $totalAmount = $conn->query('SELECT COALESCE(SUM(amount), 0) as total FROM billing')->fetch_assoc()['total'];
-    $paidAmount = $conn->query("SELECT COALESCE(SUM(amount), 0) as total FROM billing WHERE status = 'Paid'")->fetch_assoc()['total'];
-    
-    echo json_encode([
-        'total' => $total,
-        'pending' => $pending,
-        'paid' => $paid,
-        'totalAmount' => $totalAmount,
-        'paidAmount' => $paidAmount
-    ]);
-    exit;
-}
-
+// --- Server-rendered table data below (uses $conn from bootstrap) ---
 function h($value) {
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
@@ -256,71 +153,7 @@ if ($billingResult) {
 </head>
 <body class="font-body-md overflow-x-hidden">
 <!-- SideNavBar -->
-<aside class="fixed left-0 top-0 h-screen w-[260px] border-r border-outline-variant/10 flex flex-col py-6 z-50" style="background-color: #00685D;">
-<div class="px-6 mb-8">
-<h1 class="text-headline-md font-headline-md font-bold text-surface-container-lowest">ASCLEPIUS Medical &<br> Diagnostic Group Inc.</h1>
-<p class="text-label-bold text-surface-variant/60 font-label-bold">Laboratory Information System</p>
-</div>
-<nav class="flex-1 space-y-1">
-
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dashboard.php">
-<span class="material-symbols-outlined">dashboard</span>
-<span class="font-label-bold text-label-bold">Dashboard</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Patient.php">
-<span class="material-symbols-outlined">group</span>
-<span class="font-label-bold text-label-bold">Patients</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Doctor.php">
-<span class="material-symbols-outlined">biotech</span>
-<span class="font-label-bold text-label-bold">Doctors</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Appointment.php">
-<span class="material-symbols-outlined">receipt_long</span>
-<span class="font-label-bold text-label-bold">Appointment</span>
-</a>
-
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Medical Records.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Medical Records</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Laboratory Result.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Laboratory Results</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Agency Referral.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Agency Referral</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Prescription.php">
-<span class="material-symbols-outlined">description</span>
-<span class="font-label-bold text-label-bold">Prescription</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 bg-surface-variant/20 text-surface-bright rounded-lg mx-2 my-1 opacity-100 transition-colors" href="#">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Billing</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dental.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Dental</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="X-ray.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">X-Ray</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Psych.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Psych</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-error/80 hover:text-error hover:bg-error/10 mx-2 my-1 opacity-70 transition-colors" href="index.php" onclick="localStorage.clear();">
-<span class="material-symbols-outlined">logout</span>
-<span class="font-label-bold text-label-bold">Logout</span>
-</a>
-</nav>
-
-
-</div>
-</aside>
+<?php $active = 'billing'; require __DIR__ . '/frontend/partials/sidebar.php'; ?>
 <!-- Main Content Shell -->
 <main class="ml-[260px] min-h-screen flex flex-col">
 <!-- TopAppBar -->
@@ -348,79 +181,29 @@ if ($billingResult) {
 <div class="p-container-padding space-y-gutter">
 <!-- Summary Bento Grid -->
 <section class="grid grid-cols-1 md:grid-cols-3 gap-card-gap">
-<div class="bento-card p-6 rounded-xl flex flex-col justify-between">
-<div class="flex justify-between items-start">
-<div class="w-12 h-12 rounded-xl bg-primary-fixed/30 flex items-center justify-center">
-<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<div class="bento-card p-6 rounded-xl">
+<div class="w-12 h-12 rounded-xl bg-primary-fixed/30 flex items-center justify-center mb-4"><span class="material-symbols-outlined text-primary" style="font-variation-settings:'FILL' 1;">account_balance_wallet</span></div>
+<p class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest">Total Billed</p>
+<h2 id="stat-total-amount" class="text-[32px] font-bold text-on-surface mt-1 leading-none">PHP 0.00</h2>
+<p class="text-body-sm text-on-surface-variant mt-2"><span id="stat-total">0</span> bills on record</p>
 </div>
-<span class="text-[10px] bg-primary-fixed text-on-primary-fixed px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">+12.5%</span>
+<div class="bento-card p-6 rounded-xl">
+<div class="w-12 h-12 rounded-xl bg-secondary-fixed/30 flex items-center justify-center mb-4"><span class="material-symbols-outlined text-secondary" style="font-variation-settings:'FILL' 1;">pending_actions</span></div>
+<p class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest">Pending Bills</p>
+<h2 id="stat-pending" class="text-[32px] font-bold text-on-surface mt-1 leading-none">0</h2>
+<p class="text-body-sm text-on-surface-variant mt-2">Awaiting payment</p>
 </div>
-<div class="mt-4">
-<p class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest">Outstanding Invoices</p>
-<h2 class="text-[32px] font-bold text-on-surface mt-1 leading-none">₱0</h2>
-<p class="text-body-sm text-on-surface-variant mt-2">Across 0 active patient records</p>
-</div>
-</div>
-<div class="bento-card p-6 rounded-xl flex flex-col justify-between">
-<div class="flex justify-between items-start">
-<div class="w-12 h-12 rounded-xl bg-secondary-fixed/30 flex items-center justify-center">
-<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">security</span>
-</div>
-<span class="text-[10px] bg-secondary-fixed text-on-secondary-fixed px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Pending</span>
-</div>
-<div class="mt-4">
-<p class="text-on-surface-variant font-label-bold text-label-bold uppercase tracking-widest">Pending Insurance Claims</p>
-<h2 class="text-[32px] font-bold text-on-surface mt-1 leading-none">0</h2>
-<div class="w-full bg-surface-container h-2 rounded-full mt-4 overflow-hidden">
-<div class="bg-primary h-full w-[65%]"></div>
-</div>
-<p class="text-body-sm text-on-surface-variant mt-2">0% processing rate this week</p>
-</div>
-</div>
-<div class="bento-card p-6 rounded-xl bg-inverse-surface border-none flex flex-col justify-between overflow-hidden relative">
-<!-- Subtle background decoration -->
-<div class="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
-<div class="flex justify-between items-start relative z-10">
-<div class="w-12 h-12 rounded-xl bg-primary-container flex items-center justify-center">
-<span class="material-symbols-outlined text-primary-fixed-dim" style="font-variation-settings: 'FILL' 1;">payments</span>
-</div>
-<button class="text-surface-variant hover:text-surface-bright transition-colors">
-<span class="material-symbols-outlined">more_horiz</span>
-</button>
-</div>
-<h2 class="text-[32px] font-bold text-surface-bright mt-1 leading-none">₱0</h2>
-<div class="mt-4 relative z-10">
-<p class="text-surface-variant font-label-bold text-label-bold uppercase tracking-widest">Total Revenue (Monthly)</p>
-<p class="text-body-sm text-surface-variant opacity-80 mt-2">Fiscal cycle ends in days</p>
-</div>
+<div class="bento-card p-6 rounded-xl bg-inverse-surface border-none">
+<div class="w-12 h-12 rounded-xl bg-primary-container flex items-center justify-center mb-4"><span class="material-symbols-outlined text-primary-fixed-dim" style="font-variation-settings:'FILL' 1;">payments</span></div>
+<p class="text-surface-variant font-label-bold text-label-bold uppercase tracking-widest">Collected</p>
+<h2 id="stat-paid-amount" class="text-[32px] font-bold text-surface-bright mt-1 leading-none">PHP 0.00</h2>
+<p class="text-body-sm text-surface-variant opacity-80 mt-2"><span id="stat-paid">0</span> paid bills</p>
 </div>
 </section>
 <!-- Main Workspace Grid -->
 <div class="grid grid-cols-12 gap-gutter">
 <!-- Table Area -->
 <section class="col-span-12 lg:col-span-9 space-y-gutter">
-<!-- Filters & Search -->
-<div class="flex flex-wrap items-center justify-between gap-4 p-4 bg-surface-container rounded-xl border border-outline-variant hover:shadow-md transition-shadow duration-300">
-<div class="flex items-center gap-3">
-<div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant px-3 py-1.5 rounded-lg">
-<span class="material-symbols-outlined text-sm text-on-surface-variant">calendar_today</span>
-<span class="text-body-sm">Last 30 Days</span>
-</div>
-<div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant px-3 py-1.5 rounded-lg">
-<span class="material-symbols-outlined text-sm text-on-surface-variant">filter_list</span>
-<span class="text-body-sm">All Statuses</span>
-</div>
-<div class="flex items-center gap-2 bg-surface-container-lowest border border-outline-variant px-3 py-1.5 rounded-lg">
-<span class="text-body-sm">Aetna, BlueShield...</span>
-</div>
-</div>
-<div class="flex items-center gap-2">
-<button class="text-primary hover:bg-primary/10 px-3 py-1.5 rounded-lg transition-colors font-label-bold text-label-bold">Clear Filters</button>
-<button class="bg-surface-container-high p-1.5 rounded-lg border border-outline-variant">
-<span class="material-symbols-outlined text-sm">download</span>
-</button>
-</div>
-</div>
 <!-- Invoices Table -->
 <div class="bg-surface-container-lowest rounded-xl border border-outline-variant overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
 <table class="w-full text-left border-collapse">
@@ -453,8 +236,10 @@ if ($billingResult) {
 <td class="px-6 py-4 text-right"><span class="text-body-md font-bold">PHP <?php echo number_format((float)$bill['amount'], 2); ?></span></td>
 <td class="px-6 py-4"><span class="px-2 py-1 rounded bg-surface-variant text-on-surface-variant text-[10px] font-bold uppercase"><?php echo h($bill['insurance_provider'] ?: 'Self Pay'); ?></span></td>
 <td class="px-6 py-4 text-center"><span class="px-2 py-1 rounded <?php echo $statusClass; ?> text-[10px] font-bold uppercase"><?php echo h($bill['status'] ?: 'Pending'); ?></span></td>
-<td class="px-6 py-4 text-right">
-<button class="text-on-surface-variant hover:text-primary transition-colors" title="<?php echo h($bill['notes'] ?: 'View bill'); ?>">
+<td class="px-6 py-4 text-right whitespace-nowrap">
+<a target="_blank" rel="noopener" href="backend/api/billing.php?api=bill_pdf&amp;id=<?php echo (int)$bill['id']; ?>" class="inline-flex text-primary hover:text-primary/80 transition-colors align-middle" title="Print receipt (PDF)"><span class="material-symbols-outlined text-lg">picture_as_pdf</span></a>
+<?php if ($canWriteBill): ?><button onclick="billStartEdit(<?php echo (int)$bill['id']; ?>)" class="text-primary hover:text-primary/80 transition-colors align-middle ml-2" title="Edit"><span class="material-symbols-outlined text-lg">edit</span></button><?php endif; ?>
+<button class="text-on-surface-variant hover:text-primary transition-colors align-middle ml-2" title="<?php echo h($bill['notes'] ?: 'View bill'); ?>">
 <span class="material-symbols-outlined text-lg">visibility</span>
 </button>
 </td>
@@ -465,135 +250,47 @@ if ($billingResult) {
 </table>
 <div class="px-6 py-4 bg-surface flex items-center justify-between border-t border-outline-variant">
 <span class="text-body-sm text-on-surface-variant">Showing <?php echo count($billingRows); ?> billing records</span>
-<div class="flex items-center gap-2">
-<button class="p-2 rounded hover:bg-surface-container transition-colors disabled:opacity-30" disabled="">
-<span class="material-symbols-outlined">chevron_left</span>
-</button>
-<button class="w-8 h-8 rounded bg-primary text-on-primary font-label-bold text-label-bold">1</button>
-<button class="w-8 h-8 rounded hover:bg-surface-container transition-colors font-label-bold text-label-bold">2</button>
-<button class="w-8 h-8 rounded hover:bg-surface-container transition-colors font-label-bold text-label-bold">3</button>
-<button class="p-2 rounded hover:bg-surface-container transition-colors">
-<span class="material-symbols-outlined">chevron_right</span>
-</button>
-</div>
+
 </div>
 </div>
 </section>
 <!-- Sidebar Area -->
 <aside class="col-span-12 lg:col-span-3 space-y-gutter">
-<!-- Quick Bill Panel -->
+<?php if ($canWriteBill): ?>
 <section class="bento-card p-6 rounded-xl">
-<div class="flex items-center gap-2 mb-6">
-<span class="material-symbols-outlined text-primary">bolt</span>
-<h3 class="font-headline-md text-headline-md text-on-surface">Quick Bill</h3>
-</div>
-<form class="space-y-4">
+<div class="flex items-center gap-2 mb-6"><span class="material-symbols-outlined text-primary">bolt</span><h3 class="font-headline-md text-headline-md text-on-surface">Quick Bill</h3></div>
+<form id="bill-form" class="space-y-4">
 <div>
-<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Patient Search</label>
-<div class="relative">
-<span class="material-symbols-outlined absolute right-3 top-2 text-sm text-outline">search</span>
-<input class="w-full bg-surface border border-outline-variant rounded-lg p-2 text-body-sm focus:ring-1 focus:ring-primary outline-none" placeholder="Name or Patient ID" type="text"/>
-</div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Patient</label>
+<select id="bill-patient" name="patientId" required class="w-full bg-surface border border-outline-variant rounded-lg p-2 text-body-sm focus:ring-1 focus:ring-primary outline-none"><option value="">Select patient</option></select>
 </div>
 <div>
-<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Select Procedure</label>
-<select class="w-full bg-surface border border-outline-variant rounded-lg p-2 text-body-sm focus:ring-1 focus:ring-primary outline-none">
-<option>Lipid Panel - $45.00</option>
-<option>Glucose Test - $15.00</option>
-<option>Blood Typing - $30.00</option>
-<option>Custom Charge...</option>
-</select>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Description</label>
+<input name="description" placeholder="e.g. Lipid Panel" class="w-full bg-surface border border-outline-variant rounded-lg p-2 text-body-sm focus:ring-1 focus:ring-primary outline-none"/>
 </div>
-<div class="pt-2">
-<button class="w-full bg-primary text-on-primary py-2.5 rounded-lg font-label-bold text-label-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2" type="button">
-<span class="material-symbols-outlined text-sm">receipt</span>
-                                    Generate Draft
-                                </button>
+<div class="grid grid-cols-2 gap-3">
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Amount</label>
+<input name="amount" type="number" step="0.01" min="0" required placeholder="0.00" class="w-full bg-surface border border-outline-variant rounded-lg p-2 text-body-sm focus:ring-1 focus:ring-primary outline-none"/>
 </div>
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Status</label>
+<select name="status" class="w-full bg-surface border border-outline-variant rounded-lg p-2 text-body-sm focus:ring-1 focus:ring-primary outline-none"><option>Pending</option><option>Paid</option></select>
+</div>
+</div>
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Billing Date</label>
+<input name="billingDate" type="date" class="w-full bg-surface border border-outline-variant rounded-lg p-2 text-body-sm focus:ring-1 focus:ring-primary outline-none"/>
+</div>
+<div>
+<label class="block text-label-bold font-label-bold text-on-surface-variant mb-1">Payment Method</label>
+<input name="paymentMethod" placeholder="Cash / Card / Insurance" class="w-full bg-surface border border-outline-variant rounded-lg p-2 text-body-sm focus:ring-1 focus:ring-primary outline-none"/>
+</div>
+<button type="submit" class="w-full bg-primary text-on-primary py-2.5 rounded-lg font-label-bold text-label-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"><span class="material-symbols-outlined text-sm">receipt</span> Create Bill</button>
+<p id="bill-msg" class="text-sm text-center"></p>
 </form>
 </section>
-<!-- Recent Payments Activity -->
-<section class="bento-card p-6 rounded-xl">
-<div class="flex justify-between items-center mb-6">
-<h3 class="font-headline-md text-headline-md text-on-surface">Recent Activity</h3>
-<button class="text-primary text-[11px] font-bold uppercase tracking-wider hover:underline">View All</button>
-</div>
-<div class="space-y-6">
-<div class="flex gap-3">
-<div class="w-8 h-8 rounded-full bg-[#DEF7EC] flex items-center justify-center shrink-0">
-<span class="material-symbols-outlined text-[#03543F] text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
-</div>
-<div>
-<p class="text-body-sm text-on-surface leading-tight">Payment received from <strong>Elena Rodriguez</strong> via Stripe.</p>
-<div class="flex items-center gap-2 mt-1">
-<span class="text-[10px] text-on-surface-variant">2 mins ago</span>
-<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
-<span class="text-[10px] font-bold text-primary">$245.00</span>
-</div>
-</div>
-</div>
-<div class="flex gap-3">
-<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center shrink-0">
-<span class="material-symbols-outlined text-on-secondary-container text-sm">mail</span>
-</div>
-<div>
-<p class="text-body-sm text-on-surface leading-tight">Claim #CLA-7712 approved by <strong>Aetna Health</strong>.</p>
-<div class="flex items-center gap-2 mt-1">
-<span class="text-[10px] text-on-surface-variant">45 mins ago</span>
-<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
-<span class="text-[10px] font-bold text-secondary">$1,120.00</span>
-</div>
-</div>
-</div>
-<div class="flex gap-3">
-<div class="w-8 h-8 rounded-full bg-error-container flex items-center justify-center shrink-0">
-<span class="material-symbols-outlined text-on-error-container text-sm">warning</span>
-</div>
-<div>
-<p class="text-body-sm text-on-surface leading-tight">Invoice #INV-9822 for <strong>Marcus Thorne</strong> became overdue.</p>
-<div class="flex items-center gap-2 mt-1">
-<span class="text-[10px] text-on-surface-variant">2 hours ago</span>
-<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
-<span class="text-[10px] font-bold text-error">Reminder Sent</span>
-</div>
-</div>
-</div>
-<div class="flex gap-3">
-<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center shrink-0">
-<span class="material-symbols-outlined text-on-surface-variant text-sm">receipt_long</span>
-</div>
-<div>
-<p class="text-body-sm text-on-surface leading-tight">New recurring billing cycle started for <strong>Lab Partner B</strong>.</p>
-<div class="flex items-center gap-2 mt-1">
-<span class="text-[10px] text-on-surface-variant">4 hours ago</span>
-</div>
-</div>
-</div>
-</div>
-</section>
-<!-- Revenue Breakdown Card -->
-<section class="bento-card overflow-hidden rounded-xl bg-gradient-to-br from-surface to-surface-container">
-<div class="p-6">
-<h3 class="font-headline-md text-headline-md text-on-surface mb-4">Revenue Breakdown</h3>
-<div class="space-y-4">
-<div class="flex justify-between items-end">
-<span class="text-body-sm text-on-surface-variant">Direct Payment</span>
-<span class="text-body-sm font-bold">42%</span>
-</div>
-<div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
-<div class="bg-primary h-full w-[42%]"></div>
-</div>
-<div class="flex justify-between items-end">
-<span class="text-body-sm text-on-surface-variant">Insurance Reimbursement</span>
-<span class="text-body-sm font-bold">58%</span>
-</div>
-<div class="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
-<div class="bg-secondary h-full w-[58%]"></div>
-</div>
-</div>
-</div>
-<img alt="Abstract Data Visualization" class="w-full h-24 object-cover opacity-20 grayscale" data-alt="A clean, minimalist abstract background representing medical data visualization with subtle teal and blue gradients. The image features thin, elegant lines and glowing data points that evoke a sense of high-tech clinical precision and financial clarity. The lighting is bright and modern, fitting a professional medical software interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCB5W_jIHigUsIAvak5sU3GyOnAGZZd0C7LeYBuBfU2U1vEn719E2SRZX2Oq942LNtVhNlrbQsyH6wasB0Uly376PV7JaoUG4BOZ93LHl2yxk1RcFJOSn_D7MjbX4LWacdiGGFbqVXPuuS2Zk23-SrtIf99YLKS3zrZwI0ipX41xiDVigqv3IIX_Mytl2Km8qwm_xm5C4CIq1-ArcPxYccRUtXhr-f29JTVWoa37_tKnd9tQGDeazo6PC-P-tebw3VjgxizUDMYc0"/>
-</section>
+<?php endif; ?>
 </aside>
 </div>
 </div>
@@ -601,26 +298,44 @@ if ($billingResult) {
 <!-- Hidden on large screens as per instructions to suppress navigation/FAB on desktop main pages if sidebar is present -->
 </main>
 <script>
-        // Micro-interactions
-        document.querySelectorAll('button').forEach(button => {
-            button.addEventListener('mousedown', () => {
-                button.classList.add('scale-95');
-            });
-            button.addEventListener('mouseup', () => {
-                button.classList.remove('scale-95');
-            });
-            button.addEventListener('mouseleave', () => {
-                button.classList.remove('scale-95');
-            });
+    const BILL_API = 'backend/api/billing.php';
+    const BILL_ROWS = <?php echo json_encode($billingRows, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+    let billEditingId = null;
+    function billStartEdit(id) {
+        const r = BILL_ROWS.find(x => Number(x.id) === Number(id));
+        const f = document.getElementById('bill-form');
+        if (!r || !f) return;
+        billEditingId = id;
+        ['patientId','description','amount','status','billingDate','paymentMethod'].forEach(k => {
+            const el = f.elements[k]; if (el) el.value = (r[k] == null) ? '' : r[k];
         });
-
-        // Search highlight effect
-        const searchInput = document.querySelector('input[type="text"]');
-        searchInput.addEventListener('focus', () => {
-            searchInput.parentElement.classList.add('ring-2', 'ring-primary/20');
-        });
-        searchInput.addEventListener('blur', () => {
-            searchInput.parentElement.classList.remove('ring-2', 'ring-primary/20');
-        });
-    </script>
+        const b = f.querySelector('button[type="submit"]'); if (b) b.textContent = 'Update Bill';
+        const m = document.getElementById('bill-msg'); if (m) { m.textContent = 'Editing bill #' + id + ' - submit to save, or reload to cancel'; m.className = 'text-sm text-center text-on-surface-variant'; }
+        f.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    function phpMoney(n){ return 'PHP ' + Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+    async function billLoadStats(){
+        const s = await fetch(BILL_API+'?api=get_stats').then(r=>r.json()).catch(()=>({}));
+        const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
+        set('stat-total-amount', phpMoney(s.totalAmount));
+        set('stat-total', s.total ?? 0);
+        set('stat-pending', s.pending ?? 0);
+        set('stat-paid-amount', phpMoney(s.paidAmount));
+        set('stat-paid', s.paid ?? 0);
+    }
+    async function billLoadPatients(){
+        const sel=document.getElementById('bill-patient'); if(!sel) return;
+        const list=await fetch('backend/api/patients.php?api=get_patients').then(r=>r.ok?r.json():[]).catch(()=>[]);
+        list.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.firstName+' '+p.lastName;sel.appendChild(o);});
+    }
+    const billForm=document.getElementById('bill-form');
+    if(billForm){ billForm.addEventListener('submit', async e=>{
+        e.preventDefault();
+        const msg=document.getElementById('bill-msg'); msg.textContent='Saving...'; msg.className='text-sm text-center text-on-surface-variant';
+        const fd=new FormData(billForm); fd.append('action', billEditingId ? 'update_bill' : 'add_bill'); if (billEditingId) fd.append('id', billEditingId);
+        const res=await fetch(BILL_API,{method:'POST',body:fd}).then(r=>r.json()).catch(()=>({success:false,message:'Network error'}));
+        if(res.success){ location.reload(); } else { msg.textContent=''; window.showError(res.message||'Failed to save'); }
+    }); }
+    billLoadStats(); billLoadPatients();
+</script>
 </body></html>

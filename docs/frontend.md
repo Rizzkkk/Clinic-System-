@@ -1,0 +1,77 @@
+# Frontend
+
+## Design system (current)
+
+The root `*.php` pages are the **view layer** (served at the web root); shared markup lives in
+`frontend/partials/` — notably **`sidebar.php`**, the single role-filtered left nav included by
+every module page (`<?php $active='<module>'; require __DIR__.'/frontend/partials/sidebar.php'; ?>`).
+It renders each link only if `can_access($module)` is true, so the nav matches the user's role
+and is identical across pages (replacing the previously duplicated, inconsistent hardcoded navs).
+
+The frontend is plain HTML/CSS/JS rendered by PHP. There is **no build step**. Two distinct
+visual styles exist today and should be unified during migration:
+
+| Surface | Styling | Font |
+|---------|---------|------|
+| Auth pages (`index.php`, `register.php`, `ForgotPassword.php`) | Hand-written `<style>` blocks | Poppins |
+| Module pages (Patient, Doctor, Appointment, …) | **Tailwind via CDN** with a per-page `tailwind.config` theme | Inter + Manrope + Material Symbols |
+| Install/utility pages (`install.php`, `add_table.php`) | Tailwind via CDN | Inter |
+
+**Palette (teal):** `#2bb18f`, `#0aa6a6`, `#259676` (auth) and `#00685d` / `#008376`
+(modules). **Layout:** module pages use a fixed 260px left sidebar (`w-sidebar`) + content.
+
+### Known inconsistencies to standardize
+
+- **Branding mismatch:** module pages are titled **"MedLab Pro"** / "Laboratory Information
+  System", while auth pages and the sidebar say **"ASCLEPIUS"**. Pick one.
+- **Two Tailwind theme configs** are duplicated across module pages — extract to one shared
+  config/stylesheet.
+- **Tailwind CDN** is convenient but not ideal for production (FOUC, no purge, external
+  dependency). Consider a built/pinned stylesheet during the asset-extraction step.
+- **Inline CSS/JS everywhere** — extract to `frontend/assets/` (see [backend-plan.md](backend-plan.md) step 8).
+
+## Page inventory & feature audit
+
+Legend: done = working (real DB) · partial · stub = static UI, no backend.
+
+| Page (file) | State | Auth guard | What it does | Gaps / notes |
+|-------------|:----:|:---------:|--------------|--------------|
+| `index.php` (Login) | done | n/a | Email+password login; hashed verify; `session_regenerate_id`. | "Remember me" checkbox is decorative. Label says "Username" but field is email. |
+| `register.php` | done | n/a | Create staff account; duplicate-email check; `password_hash`. | No password strength/format rules; no role selection (RBAC pending). |
+| `ForgotPassword.php` | done | no | Server-driven token reset (email link -> new password). | Token-based (`password_resets`), single-use, 1h expiry, no user enumeration. |
+| `Dashboard.php` | done | yes | Counts/metrics across modules; `?api=get_stats`. | Some UI state kept in `localStorage`. |
+| `Patient.php` | done | yes | CRUD patients + emergency contacts (sub-resource). | `?api=get_contacts` uses interpolated SQL (fix). No CSRF. |
+| `Doctor.php` | done | yes | CRUD doctors; filter by dept/specialty/status. | Cleanest module — prepared statements only. Migration reference. |
+| `Appointment.php` | done | yes | Book (walk-in/online), list, update status, delete. | Largest page (~1,312 lines); some `localStorage` sync. No CSRF. |
+| `Medical Records.php` | done | yes | CRUD clinical records with vitals/notes. | Escapes output via `h()`. No CSRF. |
+| `Laboratory Result.php` | done | yes | List lab results; abnormal flag; per-row **PDF report**; write-gated create form (patient + ordering-doctor dropdowns). | Create form added; fake tabs/"Batch verify" removed. |
+| `Prescription.php` | done | yes | Create prescriptions with real **patient + doctor dropdowns** → saves to DB; real stat tiles; delete. | Rebuilt from a fake client-side demo. Write-gated (doctor/admin). |
+| `Biling.php` (Billing) | done | yes | Real "Quick Bill" (patient dropdown → saves); real stat tiles; update payment status; delete. | Filename misspelled. Fake "Recent Activity"/"Revenue Breakdown" removed. Write-gated (cashier/admin). |
+| `Agency Referral.php` | done | yes | Registry: refer a patient to an external agency (add/list/delete). | `agency_referrals`; reception/doctor + admin. |
+| `Dental.php` | done | yes | Registry: dental records per patient. | `dental_records`; lab/doctor read, doctor write. |
+| `Psych.php` | done | yes | Registry: psychiatry sessions per patient. | `psych_sessions`; doctor + admin. |
+| `X-ray.php` | done | yes | Registry: x-ray studies per patient. | `xray_studies`; lab write, lab/doctor read. |
+| `Lab Technicians.php` | done | yes | Staff registry: add/list/delete lab technicians + stats. | Admin-only (RBAC). Built on the new backend from day one. |
+| `Cashiers.php` | done | yes | Staff registry: add/list/delete cashiers + stats. | Admin-only (RBAC). |
+| `Receptionists.php` | done | yes | Staff registry: add/list/delete receptionists + stats. | Admin-only (RBAC). |
+
+> **Migration status:** all 8 modules now run on the new backend (`backend/api/*.php`) via the
+> shared bootstrap + a compat shim. Server-rendered ones keep their table query in the page;
+> Dashboard has no API of its own. Next: CSRF + extracting inline CSS/JS to `frontend/assets/`
+> (see [backend-plan.md](backend-plan.md)).
+
+## Frontend ↔ backend interaction
+
+Pages talk to their own backend via `fetch()` against the `?api=` / POST `action` endpoints
+documented in [api-reference.md](api-reference.md). After migration, those `fetch()` URLs
+point at `backend/api/<module>.php`, and every write sends a CSRF token. The interaction
+pattern (JSON in/out) does not change — only where the code lives.
+
+## Accessibility & UX follow-ups (production)
+
+- Ensure all inputs have associated `<label>`s (mostly present); fix the login "Username"
+  label (it's an email field).
+- Provide clear loading and error states for `fetch()` calls (some buttons are UI-only today).
+- Verify color contrast for the teal-on-white palette meets WCAG AA.
+- Keep flows simple; avoid decorative controls that imply unimplemented behavior
+  (e.g. "Remember me", "Batch verify").

@@ -1,325 +1,148 @@
 <?php
-session_start();
-require_once __DIR__ . '/db.php';
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: index.php');
-    exit;
+require_once __DIR__ . '/backend/auth/bootstrap.php';
+if (!empty($_GET['api']) || ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']))) {
+    require __DIR__ . '/backend/api/psych_sessions.php';
 }
+require_once __DIR__ . '/backend/auth/rbac.php';
+require_module_access('psych_sessions');
+$canWrite = can_access('psych_sessions', 'write');
 ?>
 <!DOCTYPE html>
-
-<html class="light" lang="en"><head>
+<html lang="en">
+<head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Manrope:wght@600;700;800&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            "colors": {
-                    "on-primary-container": "#f4fffb",
-                    "tertiary-container": "#707579",
-                    "surface-container-highest": "#dfe4e1",
-                    "on-background": "#171d1b",
-                    "inverse-on-surface": "#edf2ef",
-                    "secondary-fixed": "#cbe6ff",
-                    "primary": "#00685d",
-                    "surface-dim": "#d6dbd9",
-                    "surface-container-low": "#f0f5f2",
-                    "on-tertiary": "#ffffff",
-                    "inverse-primary": "#72d8c8",
-                    "surface-container-high": "#e4e9e7",
-                    "on-secondary": "#ffffff",
-                    "error-container": "#ffdad6",
-                    "outline-variant": "#bdc9c5",
-                    "outline": "#6d7a77",
-                    "on-error-container": "#93000a",
-                    "tertiary-fixed": "#dfe3e7",
-                    "surface-bright": "#f6faf8",
-                    "tertiary": "#585d60",
-                    "on-secondary-fixed": "#001e30",
-                    "inverse-surface": "#2c3130",
-                    "on-tertiary-fixed-variant": "#43474b",
-                    "on-surface-variant": "#3d4946",
-                    "surface": "#f6faf8",
-                    "surface-tint": "#006b5f",
-                    "secondary-fixed-dim": "#a1cbf0",
-                    "on-tertiary-container": "#fbfcff",
-                    "on-tertiary-fixed": "#171c1f",
-                    "surface-variant": "#dfe4e1",
-                    "background": "#f6faf8",
-                    "primary-fixed-dim": "#72d8c8",
-                    "on-error": "#ffffff",
-                    "on-primary-fixed": "#00201c",
-                    "on-primary-fixed-variant": "#005047",
-                    "surface-container-lowest": "#ffffff",
-                    "on-secondary-container": "#345f80",
-                    "tertiary-fixed-dim": "#c3c7cb",
-                    "primary-fixed": "#8ff4e3",
-                    "primary-container": "#008376",
-                    "secondary": "#376283",
-                    "on-surface": "#171d1b",
-                    "on-primary": "#ffffff",
-                    "secondary-container": "#aed9ff",
-                    "on-secondary-fixed-variant": "#1c4a6a",
-                    "surface-container": "#eaefec",
-                    "error": "#ba1a1a"
-            },
-            "borderRadius": {
-                    "DEFAULT": "0.25rem",
-                    "lg": "0.5rem",
-                    "xl": "0.75rem",
-                    "full": "9999px"
-            },
-            "spacing": {
-                    "container-padding": "24px",
-                    "sidebar-width": "260px",
-                    "card-gap": "16px",
-                    "stack-md": "16px",
-                    "gutter": "20px",
-                    "stack-sm": "8px"
-            },
-            "fontFamily": {
-                    "label-bold": ["Inter"],
-                    "headline-lg": ["Manrope"],
-                    "label-caps": ["Inter"],
-                    "body-sm": ["Inter"],
-                    "headline-md": ["Manrope"],
-                    "body-md": ["Inter"],
-                    "body-lg": ["Inter"]
-            },
-            "fontSize": {
-                    "label-bold": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
-                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
-                    "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.08em", "fontWeight": "600"}],
-                    "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
-                    "headline-md": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
-                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
-                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}]
-            }
-          },
-        },
-      }
-    </script>
+<title>Psychiatry Sessions - ASCLEPIUS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Manrope:wght@600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-            vertical-align: middle;
-        }
-        .scale-98 { transform: scale(0.98); }
-        .glass-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(8px); }
-        .sidebar-active { background-color: #005047; color: #8ff4e3; }
-    </style>
+    body { font-family: 'Inter', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+    .input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #bdc9c5; border-radius: 0.5rem; font-size: 14px; background:#fff; }
+    .input:focus { outline: none; border-color: #00685d; }
+    .nav-link { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0.75rem; margin: 0.25rem 0.5rem; color: rgba(223,228,225,0.7); border-radius: 0.5rem; font-size: 12px; font-weight: 700; text-decoration:none; }
+    .nav-link:hover { color: #fff; background: rgba(223,228,225,0.1); }
+    .nav-link.active { color: #fff; background: rgba(223,228,225,0.15); }
+</style>
 </head>
-<body class="bg-background text-on-background font-body-md">
-<!-- SideNavBar (Execution from JSON) -->
-<aside class="text-primary-fixed dark:text-primary-fixed-dim docked h-screen w-sidebar fixed left-0 top-0 flex flex-col h-full py-6 z-50" style="background-color: #00685D;">
-<div class="px-6 mb-8">
-<h1 class="text-headline-md font-headline-md font-bold text-surface-container-lowest">ASCLEPIUS Medical &<br> Diagnostic Group Inc.</h1>
-<p class="text-label-bold text-surface-variant/60 font-label-bold">Laboratory Information System</p>
-</div>
-<nav class="flex-1 px-4 space-y-1 overflow-y-auto no-scrollbar">
-<!-- Dashboard -->
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dashboard.php">
-<span class="material-symbols-outlined">dashboard</span>
-<span class="font-label-bold text-label-bold">Dashboard</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Patient.php">
-<span class="material-symbols-outlined">group</span>
-<span class="font-label-bold text-label-bold">Patients</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Doctor.php">
-<span class="material-symbols-outlined">group</span>
-<span class="font-label-bold text-label-bold">Doctors</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Appointment.php">
-<span class="material-symbols-outlined">receipt_long</span>
-<span class="font-label-bold text-label-bold">Appointment</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Medical Records.php">
-<span class="material-symbols-outlined">biotech</span>
-<span class="font-label-bold text-label-bold">Medical Records</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Laboratory Result.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Laboratory Results</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Agency Referral.php">
-<span class="material-symbols-outlined">description</span>
-<span class="font-label-bold text-label-bold">Agency Referral</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Prescription.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Prescription</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Biling.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Billing</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dental.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Dental</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="X-ray.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">X-ray</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 bg-surface-variant/20 text-surface-bright rounded-lg mx-2 my-1 opacity-100 transition-colors" href="#">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Psych</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-error/80 hover:text-error hover:bg-error/10 mx-2 my-1 opacity-70 transition-colors" href="index.php" onclick="localStorage.clear();">
-<span class="material-symbols-outlined">logout</span>
-<span class="font-label-bold text-label-bold">Logout</span>
-</a>
-</nav>
-</aside>
-<!-- Main Workspace -->
-<main class="ml-sidebar h-screen flex flex-col overflow-y-auto overflow-x-hidden no-scrollbar" style="margin-left: 260px; width: calc(100% - 260px);">
-<!-- TopNavBar (Execution from JSON) -->
-<header class="bg-surface sticky top-0 flex justify-between items-center h-16 px-gutter w-full border-b border-outline-variant/30 z-40">
-<div class="flex flex-col">
-<h2 class="font-headline-lg text-headline-lg text-primary">Psych</h2>
-<p class="text-body-sm text-on-surface-variant">Psychiatry clinical suite</p>
-</div>
-<div class="flex items-center gap-4">
-<div class="relative w-80">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-xl">search</span>
-<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg focus:ring-2 focus:ring-primary text-body-md" placeholder="Search patient, MRN, order" type="text"/>
-</div>
-<button class="p-2 text-on-surface-variant hover:bg-surface-container-low rounded-full transition-all">
-<span class="material-symbols-outlined">notifications</span>
-</button>
-</div>
-</header>
-<!-- Dashboard Workspace -->
-<er border-outline-variant flex justify-between items-center opacity-70">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant font-bold">JM</div>
-<div>
-<p class="text-body-md font-bold text-on-surface leading-none">James Miller</p>
-<p class="text-label-caps text-on-surface-variant mt-1">1:00 - 2:00 PM</p>
-</div>
-</div>
-<span class="material-symbols-outlined text-on-surface-variant" data-icon="more_vert">more_vert</span>
-</div>
-<div class="p-4 rounded-lg border border-outline-variant flex justify-between items-center opacity-70">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant font-bold">SK</div>
-<div>
-<p class="text-body-md font-bold text-on-surface leading-none">Sarah Ko</p>
-<p class="text-label-caps text-on-surface-variant mt-1">2:15 - 3:15 PM</p>
-</div>
-</div>
-<span class="material-symbols-outlined text-on-surface-variant" data-icon="more_vert">more_vert</span>
-</div>
-<div class="p-4 rounded-lg border border-outline-variant flex justify-between items-center opacity-70">
-<div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center text-on-surface-variant font-bold">TB</div>
-<div>
-<p class="text-body-md font-bold text-on-surface leading-none">Tom Baker</p>
-<p class="text-label-caps text-on-surface-variant mt-1">4:00 - 5:00 PM</p>
-</div>
-</div>
-<span class="material-symbols-outlined text-on-surface-variant" data-icon="more_vert">more_vert</span>
-</div>
-</div>
-</div>
-</div>
-<!-- Lower Grid Section -->
-<div class="grid grid-cols-12 gap-card-gap">
-<!-- Clinical Metrics / Quick Stats -->
-<div class="col-span-12 lg:col-span-7 space-y-card-gap">
-<div class="bg-white border border-outline-variant rounded-xl p-6">
-<div class="flex justify-between items-center mb-6">
-<h4 class="font-headline-md text-headline-md text-on-surface">Weekly Case Progress</h4>
-<div class="flex gap-2">
-<span class="w-3 h-3 rounded-full bg-primary"></span>
-<span class="text-label-caps text-on-surface-variant">Clinical Goals</span>
-</div>
-</div>
-<div class="space-y-6">
-<div class="space-y-2">
-<div class="flex justify-between text-body-sm">
-<span class="font-bold">Anxiety Reductions (Group B)</span>
-<span class="text-on-surface-variant">72% Goal Met</span>
-</div>
-<div class="w-full bg-surface-container-high h-2 rounded-full">
-<div class="bg-primary h-2 rounded-full w-[72%]"></div>
-</div>
-</div>
-<div class="space-y-2">
-<div class="flex justify-between text-body-sm">
-<span class="font-bold">CBT Module Completion</span>
-<span class="text-on-surface-variant">45% Goal Met</span>
-</div>
-<div class="w-full bg-surface-container-high h-2 rounded-full">
-<div class="bg-secondary h-2 rounded-full w-[45%]"></div>
-</div>
-</div>
-<div class="space-y-2">
-<div class="flex justify-between text-body-sm">
-<span class="font-bold">Patient Retention Rate</span>
-<span class="text-on-surface-variant">94% Goal Met</span>
-</div>
-<div class="w-full bg-surface-container-high h-2 rounded-full">
-<div class="bg-primary-container h-2 rounded-full w-[94%]"></div>
-</div>
-</div>
-</div>
-</div>
-<div class="grid grid-cols-2 gap-card-gap">
-<div class="bg-primary-container text-on-primary-container p-6 rounded-xl flex flex-col justify-between h-32">
-<span class="text-label-caps uppercase tracking-wider opacity-80">Pending Notes</span>
-<div class="flex items-end justify-between">
-<h3 class="text-[32px] font-bold">0</h3>
-<span class="material-symbols-outlined text-[32px]" data-icon="edit_calendar">edit_calendar</span>
-</div>
-</div>
-<div class="bg-tertiary-container text-on-tertiary-container p-6 rounded-xl flex flex-col justify-between h-32">
-<span class="text-label-caps uppercase tracking-wider opacity-80">Refill Requests</span>
-<div class="flex items-end justify-between">
-<h3 class="text-[32px] font-bold">04</h3>
-<span class="material-symbols-outlined text-[32px]" data-icon="prescriptions">prescriptions</span>
-</div>
-</div>
-</div>
-</div>
-<!-- Recent Activity / Timeline -->
-<div class="col-span-12 lg:col-span-5 bg-white border border-outline-variant rounded-xl p-6">
-<h4 class="font-headline-md text-headline-md text-on-surface mb-6">Recent Clinical Activity</h4>
-<button class="w-full mt-8 py-3 text-primary font-bold text-label-bold border border-primary rounded-lg hover:bg-primary/5 transition-colors">
-                        View All Activity
-                    </button>
-</div>
-</div>
-</div>
-</main>
-<script>
-        // Micro-interactions
-        document.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('mousedown', () => btn.classList.add('scale-95'));
-            btn.addEventListener('mouseup', () => btn.classList.remove('scale-95'));
-            btn.addEventListener('mouseleave', () => btn.classList.remove('scale-95'));
-        });
+<body class="bg-[#f6faf8] text-[#171d1b] min-h-screen">
+<?php $active = 'psych_sessions'; require __DIR__ . '/frontend/partials/sidebar.php'; ?>
 
-        // Simple animation for progress bars on load
-        window.addEventListener('load', () => {
-            const bars = document.querySelectorAll('.bg-primary, .bg-secondary, .bg-primary-container');
-            bars.forEach(bar => {
-                const width = bar.style.width;
-                bar.style.width = '0%';
-                setTimeout(() => {
-                    bar.style.transition = 'width 1s cubic-bezier(0.4, 0, 0.2, 1)';
-                    bar.style.width = width;
-                }, 100);
-            });
+<main class="ml-[260px] p-8">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h2 class="text-2xl font-bold" style="font-family:'Manrope',sans-serif;">Psychiatry Sessions</h2>
+            <p class="text-sm text-[#3d4946]">Record and review psychiatry sessions per patient.</p>
+        </div>
+        <span class="material-symbols-outlined text-4xl text-[#00685d]">psychology</span>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 max-w-md mb-8">
+        <div class="bg-white rounded-xl border border-[#dfe4e1] p-4"><p class="text-xs font-bold uppercase tracking-wider text-[#6d7a77]">Total</p><p id="statTotal" class="text-3xl font-bold mt-1">0</p></div>
+        <div class="bg-white rounded-xl border border-[#dfe4e1] p-4"><p class="text-xs font-bold uppercase tracking-wider text-[#6d7a77]">Last 30 days</p><p id="statRecent" class="text-3xl font-bold mt-1">0</p></div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-[#dfe4e1] p-6 mb-8">
+        <h3 class="font-bold mb-4">Add Session</h3>
+        <form id="recForm" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <select name="patientId" id="patientSelect" class="input" required><option value="">Select patient *</option></select>
+            <input name="sessionDate" type="date" class="input" title="Session Date" aria-label="Session Date">
+            <input name="sessionType" list="psychTypes" class="input" placeholder="Pick or type, e.g. Follow-up">
+            <datalist id="psychTypes"><option value="Initial Consultation"></option><option value="Follow-up"></option><option value="Therapy Session"></option><option value="Assessment"></option><option value="Counseling"></option><option value="Crisis Intervention"></option></datalist>
+            <input name="clinician" class="input" placeholder="Clinician">
+            <textarea name="chiefComplaint" class="input md:col-span-3" rows="2" placeholder="Chief Complaint"></textarea>
+            <textarea name="notes" class="input md:col-span-3" rows="2" placeholder="Notes"></textarea>
+            <textarea name="remarks" class="input md:col-span-3" rows="2" placeholder="Remarks (session-specific notes)"></textarea>
+            <input name="followUpDate" type="date" class="input" title="Follow-up Date" aria-label="Follow-up Date">
+            <select name="status" class="input"><option value="">Status</option><option>Completed</option><option>Scheduled</option><option>Follow-up</option></select>
+            <div class="md:col-span-3">
+                <button type="submit" class="px-5 py-2.5 rounded-lg text-white font-semibold" style="background:#00685d;">Save</button>
+                <span id="formMsg" class="ml-3 text-sm"></span>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-xl border border-[#dfe4e1] overflow-hidden">
+        <table class="w-full text-sm">
+            <thead><tr class="text-left text-xs uppercase tracking-wider text-[#6d7a77] border-b border-[#dfe4e1]">
+                <th class="px-5 py-3">Patient</th>
+                <th class="px-5 py-3">Date</th>
+                <th class="px-5 py-3">Type</th>
+                <th class="px-5 py-3">Clinician</th>
+                <th class="px-5 py-3">Status</th>
+                <th class="px-5 py-3 text-right">Actions</th>
+            </tr></thead>
+            <tbody id="recRows"></tbody>
+        </table>
+        <p id="emptyMsg" class="px-5 py-6 text-sm text-[#6d7a77] hidden">No records yet.</p>
+    </div>
+</main>
+
+<script>
+    const API = 'backend/api/psych_sessions.php';
+    const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const CAN_WRITE = <?php echo $canWrite ? 'true' : 'false'; ?>;
+    let RECORDS = [];
+    let editingId = null;
+    function startEdit(id) {
+        const r = RECORDS.find(x => Number(x.id) === Number(id));
+        if (!r) return;
+        editingId = id;
+        const f = document.getElementById('recForm');
+        if (!f) return;
+        Object.keys(r).forEach(k => { const el = f.elements[k]; if (el && el.type !== 'file') { el.value = (r[k] == null) ? '' : r[k]; } });
+        const b = f.querySelector('button[type="submit"]'); if (b) b.textContent = 'Update';
+        const m = document.getElementById('formMsg'); if (m) { m.textContent = 'Editing record #' + id + ' - submit to save, or reload to cancel'; m.style.color = '#00685d'; }
+        f.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    async function loadPatients() {
+        const list = await fetch('backend/api/patients.php?api=get_patients').then(r => r.ok ? r.json() : []).catch(() => []);
+        const sel = document.getElementById('patientSelect');
+        list.forEach(p => {
+            const o = document.createElement('option');
+            o.value = p.id;
+            o.textContent = `${p.firstName} ${p.lastName}`;
+            sel.appendChild(o);
         });
-    </script>
-</body></html>
+    }
+    async function loadStats() {
+        const s = await fetch(API + '?api=get_stats').then(r => r.json()).catch(() => ({total:0, recentMonth:0}));
+        document.getElementById('statTotal').textContent = s.total ?? 0;
+        document.getElementById('statRecent').textContent = s.recentMonth ?? 0;
+    }
+    async function loadRecords() {
+        const rows = await fetch(API + '?api=get_records').then(r => r.json()).catch(() => []);
+        RECORDS = rows;
+        document.getElementById('emptyMsg').classList.toggle('hidden', rows.length > 0);
+        document.getElementById('recRows').innerHTML = rows.map(r => `
+            <tr class="border-b border-[#eaefec] hover:bg-[#f6faf8]">
+                <td class="px-5 py-3 font-semibold">${esc(r.patientFirstName)} ${esc(r.patientLastName)}</td>
+                <td class="px-5 py-3">${esc(r.sessionDate || '-')}</td>
+                <td class="px-5 py-3">${esc(r.sessionType || '-')}</td>
+                <td class="px-5 py-3">${esc(r.clinician || '-')}</td>
+                <td class="px-5 py-3">${esc(r.status || '-')}</td>
+                <td class="px-5 py-3 text-right whitespace-nowrap">${CAN_WRITE ? `<button onclick="startEdit(${Number(r.id)})" class="text-[#00685d] hover:underline text-xs font-bold mr-3">Edit</button><button onclick="del(${Number(r.id)})" class="text-red-700 hover:underline text-xs font-bold">Delete</button>` : ''}</td>
+            </tr>`).join('');
+    }
+    async function del(id) {
+        if (!(await window.confirmAction('Delete this record?'))) return;
+        const fd = new FormData(); fd.append('action', 'delete_record'); fd.append('id', id);
+        const res = await fetch(API, { method:'POST', body:fd }).then(r => r.json());
+        if (!res.success) { showError(res.message || 'Delete failed.'); return; }
+        loadRecords(); loadStats();
+    }
+    document.getElementById('recForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        const fd = new FormData(e.target); fd.append('action', editingId ? 'update_record' : 'add_record'); if (editingId) fd.append('id', editingId);
+        const msg = document.getElementById('formMsg'); msg.textContent = 'Saving...';
+        const res = await fetch(API, { method:'POST', body:fd }).then(r => r.json()).catch(() => ({success:false, message:'Network error'}));
+        msg.textContent = res.message || (res.success ? 'Saved.' : 'Failed.');
+        msg.style.color = res.success ? '#00685d' : '#ba1a1a';
+        if (!res.success) window.showError(res.message || 'Failed to save.');
+        if (res.success) { e.target.reset(); editingId = null; const _b = e.target.querySelector('button[type="submit"]'); if (_b) _b.textContent = 'Save'; loadRecords(); loadStats(); }
+    });
+    loadPatients(); loadRecords(); loadStats();
+</script>
+</body>
+</html>

@@ -1,103 +1,24 @@
 <?php
-session_start();
-require_once __DIR__ . '/db.php';
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: index.php');
-    exit;
+require_once __DIR__ . '/backend/auth/bootstrap.php';
+// Backward-compat: this page's data API now lives in backend/api/laboratory_results.php.
+// Delegate ?api= / POST action requests there so existing callers keep working.
+if (!empty($_GET['api']) || ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']))) {
+    require __DIR__ . '/backend/api/laboratory_results.php';
 }
 
-// Handle AJAX requests for laboratory results operations
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    header('Content-Type: application/json');
-    
-    $action = $_POST['action'];
-    
-    if ($action === 'add_result') {
-        $stmt = $conn->prepare('
-            INSERT INTO laboratory_results (patientId, testType, testDate, results, referenceRange, abnormalFlag, orderedBy) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        ');
-        
-        $stmt->bind_param('isssssi',
-            $_POST['patientId'],
-            $_POST['testType'],
-            $_POST['testDate'],
-            $_POST['results'],
-            $_POST['referenceRange'],
-            $_POST['abnormalFlag'],
-            $_POST['orderedBy']
-        );
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Laboratory result added successfully']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Error: ' . $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    } elseif ($action === 'delete_result') {
-        $id = (int)$_POST['id'];
-        $stmt = $conn->prepare('DELETE FROM laboratory_results WHERE id = ?');
-        $stmt->bind_param('i', $id);
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'message' => $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    }
-}
+require_once __DIR__ . '/backend/auth/rbac.php';
+require_module_access('laboratory_results');
+$canWriteLab = can_access('laboratory_results', 'write');
 
-// Get all laboratory results for API response
-if (isset($_GET['api']) && $_GET['api'] === 'get_results') {
-    header('Content-Type: application/json');
-    
-    $result = $conn->query('
-        SELECT lr.id, lr.patientId, lr.testType, lr.testDate, lr.results, lr.referenceRange, lr.abnormalFlag,
-               p.firstName as patientFirstName, p.lastName as patientLastName,
-               d.firstName as doctorFirstName, d.lastName as doctorLastName
-        FROM laboratory_results lr 
-        JOIN patients p ON lr.patientId = p.id 
-        LEFT JOIN doctors d ON lr.orderedBy = d.id 
-        ORDER BY lr.testDate DESC
-    ');
-    $results = [];
-    
-    while ($row = $result->fetch_assoc()) {
-        $results[] = $row;
-    }
-    
-    echo json_encode($results);
-    exit;
-}
-
-// Get statistics
-if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
-    header('Content-Type: application/json');
-    
-    $total = $conn->query('SELECT COUNT(*) as count FROM laboratory_results')->fetch_assoc()['count'];
-    $abnormal = $conn->query("SELECT COUNT(*) as count FROM laboratory_results WHERE abnormalFlag = 'Y'")->fetch_assoc()['count'];
-    $recentMonth = $conn->query('SELECT COUNT(*) as count FROM laboratory_results WHERE testDate >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)')->fetch_assoc()['count'];
-    
-    echo json_encode([
-        'total' => $total,
-        'abnormal' => $abnormal,
-        'recentMonth' => $recentMonth
-    ]);
-    exit;
-}
-
+// --- Server-rendered table data below (uses $conn from bootstrap) ---
 function h($value) {
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
 $laboratoryRows = [];
+$labIndex = [];
 $laboratoryResult = $conn->query('
-    SELECT lr.id, lr.patientId, lr.testType, lr.testDate, lr.results, lr.referenceRange, lr.abnormalFlag,
+    SELECT lr.id, lr.patientId, lr.orderedBy, lr.testDate, lr.remarks,
            p.firstName as patientFirstName, p.lastName as patientLastName,
            d.firstName as doctorFirstName, d.lastName as doctorLastName
     FROM laboratory_results lr
@@ -107,7 +28,19 @@ $laboratoryResult = $conn->query('
 ');
 if ($laboratoryResult) {
     while ($row = $laboratoryResult->fetch_assoc()) {
+        $row['items'] = [];
         $laboratoryRows[] = $row;
+        $labIndex[(int)$row['id']] = count($laboratoryRows) - 1;
+    }
+}
+// Attach each order's individual tests (one order -> many tests).
+if ($laboratoryRows) {
+    $labItemsResult = $conn->query('SELECT resultId, testType, results, referenceRange, abnormalFlag FROM laboratory_result_items ORDER BY id');
+    if ($labItemsResult) {
+        while ($it = $labItemsResult->fetch_assoc()) {
+            $rid = (int)$it['resultId'];
+            if (isset($labIndex[$rid])) { $laboratoryRows[$labIndex[$rid]]['items'][] = $it; }
+        }
     }
 }
 ?>
@@ -220,72 +153,7 @@ if ($laboratoryResult) {
 </head>
 <body class="bg-background text-on-surface font-body-md overflow-hidden">
 <!-- Fixed Sidebar -->
-<aside class="fixed h-screen w-sidebar-width left-0 top-0 flex flex-col py-container-padding z-50" style="background-color: #00685D;">
-<div class="px-6 mb-8">
-<h1 class="text-headline-md font-headline-md font-bold text-surface-container-lowest">ASCLEPIUS Medical &<br> Diagnostic Group Inc.</h1>
-<p class="text-label-bold text-surface-variant/60 font-label-bold">Laboratory Information System</p>
-</div>
-  
-
-
-<nav class="flex-1 space-y-1">
-
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dashboard.php">
-<span class="material-symbols-outlined">dashboard</span>
-<span class="font-label-bold text-label-bold">Dashboard</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Patient.php">
-<span class="material-symbols-outlined">group</span>
-<span class="font-label-bold text-label-bold">Patients</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Doctor.php"> 
-<span class="material-symbols-outlined">biotech</span>
-<span class="font-label-bold text-label-bold">Doctors</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Appointment.php">
-<span class="material-symbols-outlined">receipt_long</span>
-<span class="font-label-bold text-label-bold">Appointment</span>
-</a>
-
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Medical Records.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Medical Records</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 bg-surface-variant/20 text-surface-bright rounded-lg mx-2 my-1 opacity-100 transition-colors" href="#">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Laboratory Results</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Agency Referral.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Agency Referral</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Prescription.php">
-<span class="material-symbols-outlined">description</span>
-<span class="font-label-bold text-label-bold">Prescription</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Biling.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Billing</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dental.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Dental</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="X-ray.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">X-Ray</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Psych.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Psych</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-error/80 hover:text-error hover:bg-error/10 mx-2 my-1 opacity-70 transition-colors" href="index.php" onclick="localStorage.clear();">
-<span class="material-symbols-outlined">logout</span>
-<span class="font-label-bold text-label-bold">Logout</span>
-</a>
-</nav>
-
-</aside>
+<?php $active = 'laboratory_results'; require __DIR__ . '/frontend/partials/sidebar.php'; ?>
 <!-- Main Content Area -->
 <main class="ml-sidebar-width flex flex-col h-screen overflow-hidden">
 <!-- TopAppBar -->
@@ -311,72 +179,59 @@ if ($laboratoryResult) {
 <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
 <div>
 <h2 class="text-headline-lg font-headline-lg text-on-surface">Laboratory Results</h2>
-<p class="text-body-md text-on-surface-variant mt-1">Review and verify clinical diagnostic findings across all departments.</p>
+<p class="text-body-md text-on-surface-variant mt-1">Review and verify clinical diagnostic findings.</p>
 </div>
-<div class="flex items-center gap-3">
-<div class="flex items-center bg-white border border-outline-variant rounded-lg p-1">
-<button class="px-4 py-1.5 text-label-bold rounded-md bg-surface-container-high text-primary font-bold">Hematology</button>
-<button class="px-4 py-1.5 text-label-bold rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors">Biochemistry</button>
-<button class="px-4 py-1.5 text-label-bold rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors">Microbiology</button>
-</div>
-<button class="flex items-center space-x-2 bg-white border border-outline-variant px-4 py-2 rounded-lg text-label-bold text-on-surface-variant hover:bg-surface-container-low transition-colors">
-<span class="material-symbols-outlined text-[18px]">calendar_today</span>
-<span>Today</span>
+<?php if ($canWriteLab): ?>
+<button type="button" onclick="document.getElementById('lab-form-card').classList.toggle('hidden')" class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-bold text-label-bold hover:bg-primary-container shadow-sm flex items-center space-x-2">
+<span class="material-symbols-outlined text-[20px]">add</span><span>Add Result</span>
 </button>
-<button class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-bold text-label-bold hover:bg-primary-container shadow-sm flex items-center space-x-2">
-<span class="material-symbols-outlined text-[20px]">verified</span>
-<span>Batch Verify</span>
-</button>
-</div>
+<?php endif; ?>
 </div>
 <!-- Bento Stats Grid -->
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter mb-8">
-<div class="bg-white border border-outline-variant p-container-padding rounded-xl shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-8">
+<div class="bg-white border border-outline-variant p-container-padding rounded-xl shadow-sm">
+<div class="flex items-center justify-between mb-2"><span class="text-label-bold text-on-surface-variant uppercase">Total Results</span><div class="w-8 h-8 rounded-lg bg-primary-container/20 flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[20px]">science</span></div></div>
+<div id="lab-stat-total" class="text-[28px] font-bold text-on-surface">0</div>
+</div>
+<div class="bg-white border border-outline-variant p-container-padding rounded-xl shadow-sm border-l-4 border-l-error">
+<div class="flex items-center justify-between mb-2"><span class="text-label-bold text-error uppercase">Abnormal Flags</span><div class="w-8 h-8 rounded-lg bg-error-container/30 flex items-center justify-center text-error"><span class="material-symbols-outlined text-[20px]">warning</span></div></div>
+<div id="lab-stat-abnormal" class="text-[28px] font-bold text-on-surface">0</div>
+<div class="text-body-sm text-on-surface-variant mt-1">Requiring review</div>
+</div>
+<div class="bg-white border border-outline-variant p-container-padding rounded-xl shadow-sm">
+<div class="flex items-center justify-between mb-2"><span class="text-label-bold text-on-surface-variant uppercase">Last 30 Days</span><div class="w-8 h-8 rounded-lg bg-secondary-container/30 flex items-center justify-center text-secondary"><span class="material-symbols-outlined text-[20px]">calendar_today</span></div></div>
+<div id="lab-stat-recent" class="text-[28px] font-bold text-on-surface">0</div>
+</div>
+</div>
+<?php if ($canWriteLab): ?>
+<!-- Add Result form (write access only) -->
+<div id="lab-form-card" class="bg-white border border-outline-variant rounded-xl shadow-sm p-container-padding mb-8 hidden">
+<h3 class="text-headline-md font-headline-md mb-4">Add Laboratory Result</h3>
+<form id="lab-form" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div><label class="block text-label-bold text-on-surface-variant mb-1 uppercase">Patient</label>
+<select id="lab-patient" name="patientId" required class="w-full bg-white border border-outline-variant rounded-lg py-2 px-3 text-body-md focus:ring-2 focus:ring-primary outline-none"><option value="">Select patient</option></select></div>
+<div><label class="block text-label-bold text-on-surface-variant mb-1 uppercase">Ordered By (Doctor)</label>
+<select id="lab-doctor" name="orderedBy" class="w-full bg-white border border-outline-variant rounded-lg py-2 px-3 text-body-md focus:ring-2 focus:ring-primary outline-none"><option value="">Not assigned</option></select></div>
+<div><label class="block text-label-bold text-on-surface-variant mb-1 uppercase">Test Date</label>
+<input name="testDate" type="date" required class="w-full bg-white border border-outline-variant rounded-lg py-2 px-3 text-body-md focus:ring-2 focus:ring-primary outline-none"/></div>
+<!-- Tests: one row per test, each with its own value, reference range, and Normal/Abnormal flag -->
+<div class="md:col-span-3">
 <div class="flex items-center justify-between mb-2">
-<span class="text-label-bold text-on-surface-variant uppercase">Results Pending</span>
-<div class="w-8 h-8 rounded-lg bg-secondary-container/30 flex items-center justify-center text-secondary">
-<span class="material-symbols-outlined text-[20px]">pending_actions</span>
+<label class="block text-label-bold text-on-surface-variant uppercase">Tests</label>
+<button type="button" onclick="labAddTestRow()" class="inline-flex items-center gap-1 text-primary text-label-bold hover:text-primary-container"><span class="material-symbols-outlined text-[18px]">add</span>Add test</button>
 </div>
+<div id="lab-tests" class="space-y-2"></div>
+<datalist id="labTests"><option value="HbA1c"></option><option value="CBC"></option><option value="FBS"></option><option value="Lipid Panel"></option><option value="Urinalysis"></option><option value="Creatinine"></option><option value="TSH"></option><option value="SGPT/ALT"></option><option value="Blood Typing"></option></datalist>
 </div>
-<div class="text-[28px] font-bold text-on-surface">0</div>
-<div class="flex items-center text-label-bold text-error mt-1">
-<span class="material-symbols-outlined text-[14px] mr-1">trending_up</span>
-<span>0% from yesterday</span>
+<div class="md:col-span-3"><label class="block text-label-bold text-on-surface-variant mb-1 uppercase">Remarks</label>
+<textarea name="remarks" rows="2" placeholder="Test-specific notes (e.g. fasting required, specimen notes)" class="w-full bg-white border border-outline-variant rounded-lg py-2 px-3 text-body-md focus:ring-2 focus:ring-primary outline-none"></textarea></div>
+<div class="md:col-span-3 flex items-center gap-3">
+<button type="submit" class="bg-primary text-on-primary px-6 py-2.5 rounded-lg font-label-bold hover:bg-primary-container shadow-sm">Save Result</button>
+<span id="lab-msg" class="text-sm"></span>
 </div>
+</form>
 </div>
-<div class="bg-white border border-outline-variant p-container-padding rounded-xl shadow-sm border-l-4 border-l-error hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer">
-<div class="flex items-center justify-between mb-2">
-<span class="text-label-bold text-error uppercase">Critical Flags</span>
-<div class="w-8 h-8 rounded-lg bg-error-container/30 flex items-center justify-center text-error">
-<span class="material-symbols-outlined text-[20px]">warning</span>
-</div>
-</div>
-<div class="text-[28px] font-bold text-on-surface">0</div>
-<div class="text-body-sm text-on-surface-variant mt-1">Requiring immediate review</div>
-</div>
-<div class="bg-white border border-outline-variant p-container-padding rounded-xl shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer">
-<div class="flex items-center justify-between mb-2">
-<span class="text-label-bold text-on-surface-variant uppercase">Avg Turnaround</span>
-<div class="w-8 h-8 rounded-lg bg-primary-container/20 flex items-center justify-center text-primary">
-<span class="material-symbols-outlined text-[20px]">timer</span>
-</div>
-</div>
-<div class="text-[28px] font-bold text-on-surface">0</div>
-</div>
-<div class="bg-white border border-outline-variant p-container-padding rounded-xl shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer">
-<div class="flex items-center justify-between mb-2">
-<span class="text-label-bold text-on-surface-variant uppercase">Verification Rate</span>
-<div class="w-8 h-8 rounded-lg bg-tertiary-fixed-dim/30 flex items-center justify-center text-tertiary">
-<span class="material-symbols-outlined text-[20px]">fact_check</span>
-</div>
-</div>
-<div class="text-[28px] font-bold text-on-surface">0<span class="text-body-lg ml-1 font-normal text-on-surface-variant">%</span></div>
-<div class="flex items-center text-label-bold text-primary mt-1">
-<span class="material-symbols-outlined text-[14px] mr-1">check_circle</span>
-<span>Above target (0%)</span>
-</div>
-</div>
-</div>
+<?php endif; ?>
 <!-- Results Data Table Area -->
 <div class="bg-white border border-outline-variant rounded-xl shadow-sm overflow-hidden flex flex-col lg:flex-row hover:shadow-md transition-shadow duration-300">
 <!-- Main Table Section -->
@@ -400,7 +255,9 @@ if ($laboratoryResult) {
 <?php else: ?>
 <?php foreach ($laboratoryRows as $result): ?>
 <?php
-$isAbnormal = strtoupper((string)$result['abnormalFlag']) === 'Y';
+$items = $result['items'] ?? [];
+$isAbnormal = false;
+foreach ($items as $it) { if (strtoupper((string)$it['abnormalFlag']) === 'Y') { $isAbnormal = true; break; } }
 $flagText = $isAbnormal ? 'Abnormal' : 'Normal';
 $flagClass = $isAbnormal ? 'bg-error-container text-on-error-container' : 'bg-primary-fixed text-on-primary-fixed';
 ?>
@@ -411,14 +268,23 @@ $flagClass = $isAbnormal ? 'bg-error-container text-on-error-container' : 'bg-pr
 <div class="font-bold text-on-surface"><?php echo h($result['patientFirstName'] . ' ' . $result['patientLastName']); ?></div>
 <div class="text-xs text-on-surface-variant">MRN: MR-<?php echo h($result['patientId']); ?> | <?php echo h($result['testDate']); ?></div>
 </td>
-<td class="px-4 py-4 text-body-sm text-on-surface-variant"><?php echo h($result['testType'] ?: 'Laboratory test'); ?></td>
-<td class="px-4 py-4 text-center">
-<div class="font-bold text-on-surface"><?php echo h($result['results'] ?: 'Pending'); ?></div>
-<div class="text-xs text-on-surface-variant"><?php echo h($result['referenceRange'] ?: 'No reference range'); ?></div>
+<td class="px-4 py-4 text-body-sm text-on-surface-variant align-top">
+<?php if (empty($items)): ?><div>Laboratory test</div><?php else: ?>
+<?php foreach ($items as $it): ?><div class="leading-6 text-on-surface"><?php echo h($it['testType'] ?: 'Laboratory test'); ?></div><?php endforeach; ?>
+<?php endif; ?>
+<?php if (!empty($result['remarks'])): ?><div class="text-xs text-on-surface-variant/70 mt-1"><?php echo h($result['remarks']); ?></div><?php endif; ?></td>
+<td class="px-4 py-4 text-center align-top">
+<?php if (empty($items)): ?><div class="font-bold text-on-surface leading-6">Pending</div><?php else: ?>
+<?php foreach ($items as $it): ?><div class="leading-6"><span class="font-bold text-on-surface"><?php echo h($it['results'] ?: 'Pending'); ?></span><?php if (!empty($it['referenceRange'])): ?> <span class="text-xs text-on-surface-variant">(<?php echo h($it['referenceRange']); ?>)</span><?php endif; ?></div><?php endforeach; ?>
+<?php endif; ?>
 </td>
 <td class="px-4 py-4"><span class="px-3 py-1 rounded-full <?php echo $flagClass; ?> text-label-bold uppercase"><?php echo h($flagText); ?></span></td>
 <td class="px-4 py-4"><span class="px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-label-bold uppercase">Released</span></td>
 <td class="px-4 py-4 text-right">
+<a class="inline-flex p-2 rounded hover:bg-surface-container-high text-on-surface-variant" title="Download PDF report" target="_blank" href="backend/api/laboratory_results.php?api=lab_report_pdf&amp;id=<?php echo (int)$result['id']; ?>">
+<span class="material-symbols-outlined">picture_as_pdf</span>
+</a>
+<?php if ($canWriteLab): ?><button onclick="labStartEdit(<?php echo (int)$result['id']; ?>)" class="p-2 rounded hover:bg-surface-container-high text-primary" title="Edit"><span class="material-symbols-outlined">edit</span></button><?php endif; ?>
 <button class="p-2 rounded hover:bg-surface-container-high text-on-surface-variant" title="<?php echo h('Ordered by Dr. ' . trim(($result['doctorFirstName'] ?? '') . ' ' . ($result['doctorLastName'] ?? ''))); ?>">
 <span class="material-symbols-outlined">visibility</span>
 </button>
@@ -433,25 +299,76 @@ $flagClass = $isAbnormal ? 'bg-error-container text-on-error-container' : 'bg-pr
 </div>
 </main>
 <script>
-        // Simple toggle for the detail sidebar to demonstrate interaction
-        function toggleSidebar() {
-            const sidebar = document.getElementById('details-sidebar');
-            if(sidebar.classList.contains('hidden')) {
-                sidebar.classList.remove('hidden');
-                sidebar.classList.add('flex');
-            } else {
-                sidebar.classList.add('hidden');
-                sidebar.classList.remove('flex');
-            }
+    const LAB_API = 'backend/api/laboratory_results.php';
+    const LAB_ROWS = <?php echo json_encode($laboratoryRows, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+    let labEditingId = null;
+    // Append one test row to the repeater, optionally pre-filled (used on load and when editing).
+    function labAddTestRow(values) {
+        const wrap = document.getElementById('lab-tests'); if (!wrap) return;
+        const v = values || {};
+        const row = document.createElement('div');
+        row.className = 'lab-test-row grid grid-cols-1 md:grid-cols-12 gap-2 items-center';
+        row.innerHTML =
+            '<input name="testType[]" list="labTests" placeholder="Test, e.g. HbA1c" class="md:col-span-4 w-full bg-white border border-outline-variant rounded-lg py-2 px-3 text-body-md focus:ring-2 focus:ring-primary outline-none"/>' +
+            '<input name="results[]" placeholder="Value / result" class="md:col-span-3 w-full bg-white border border-outline-variant rounded-lg py-2 px-3 text-body-md focus:ring-2 focus:ring-primary outline-none"/>' +
+            '<input name="referenceRange[]" placeholder="Ref. range" class="md:col-span-2 w-full bg-white border border-outline-variant rounded-lg py-2 px-3 text-body-md focus:ring-2 focus:ring-primary outline-none"/>' +
+            '<select name="abnormalFlag[]" class="md:col-span-2 w-full bg-white border border-outline-variant rounded-lg py-2 px-3 text-body-md focus:ring-2 focus:ring-primary outline-none"><option value="N">Normal</option><option value="Y">Abnormal</option></select>' +
+            '<button type="button" onclick="labRemoveTestRow(this)" title="Remove test" class="md:col-span-1 flex items-center justify-center p-2 rounded hover:bg-error-container text-on-surface-variant hover:text-on-error-container"><span class="material-symbols-outlined text-[20px]">delete</span></button>';
+        wrap.appendChild(row);
+        row.querySelector('[name="testType[]"]').value = v.testType || '';
+        row.querySelector('[name="results[]"]').value = v.results || '';
+        row.querySelector('[name="referenceRange[]"]').value = v.referenceRange || '';
+        row.querySelector('[name="abnormalFlag[]"]').value = (String(v.abnormalFlag).toUpperCase() === 'Y') ? 'Y' : 'N';
+    }
+    function labRemoveTestRow(btn) {
+        const wrap = document.getElementById('lab-tests');
+        const rows = wrap.querySelectorAll('.lab-test-row');
+        const row = btn.closest('.lab-test-row');
+        if (rows.length <= 1) { // keep at least one row: clear it instead of removing
+            row.querySelectorAll('input').forEach(i => i.value = '');
+            const s = row.querySelector('select'); if (s) s.value = 'N';
+            return;
         }
-
-        // Add some micro-interactions to table rows
-        document.querySelectorAll('tbody tr').forEach(row => {
-            row.addEventListener('click', () => {
-                // In a real app, this would load data into the sidebar
-                document.querySelectorAll('tbody tr').forEach(r => r.classList.remove('bg-primary-container/5'));
-                row.classList.add('bg-primary-container/5');
-            });
+        row.remove();
+    }
+    function labResetTests() { const wrap = document.getElementById('lab-tests'); if (wrap) { wrap.innerHTML = ''; labAddTestRow(); } }
+    function labStartEdit(id) {
+        const r = LAB_ROWS.find(x => Number(x.id) === Number(id));
+        const f = document.getElementById('lab-form');
+        if (!r || !f) return;
+        labEditingId = id;
+        ['patientId','orderedBy','testDate','remarks'].forEach(k => {
+            const el = f.elements[k]; if (el) el.value = (r[k] == null) ? '' : r[k];
         });
-    </script>
+        const wrap = document.getElementById('lab-tests'); if (wrap) wrap.innerHTML = '';
+        const items = r.items || [];
+        if (items.length) { items.forEach(it => labAddTestRow(it)); } else { labAddTestRow(); }
+        const b = f.querySelector('button[type="submit"]'); if (b) b.textContent = 'Update Result';
+        const m = document.getElementById('lab-msg'); if (m) { m.textContent = 'Editing result #' + id + ' - submit to save, or reload to cancel'; m.className = 'text-sm'; }
+        document.getElementById('lab-form-card').classList.remove('hidden');
+        f.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    async function labLoadStats(){
+        const s = await fetch(LAB_API+'?api=get_stats').then(r=>r.json()).catch(()=>({}));
+        const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
+        set('lab-stat-total', s.total ?? 0); set('lab-stat-abnormal', s.abnormal ?? 0); set('lab-stat-recent', s.recentMonth ?? 0);
+    }
+    async function labLoadPatients(){ const sel=document.getElementById('lab-patient'); if(!sel) return;
+        const list=await fetch('backend/api/patients.php?api=get_patients').then(r=>r.ok?r.json():[]).catch(()=>[]);
+        list.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.firstName+' '+p.lastName;sel.appendChild(o);}); }
+    async function labLoadDoctors(){ const sel=document.getElementById('lab-doctor'); if(!sel) return;
+        const list=await fetch('backend/api/doctors.php?api=get_doctors').then(r=>r.ok?r.json():[]).catch(()=>[]);
+        list.forEach(d=>{const o=document.createElement('option');o.value=d.id;o.textContent='Dr. '+d.firstName+' '+d.lastName;sel.appendChild(o);}); }
+    const labForm=document.getElementById('lab-form');
+    if(labForm){ labForm.addEventListener('submit', async e=>{
+        e.preventDefault();
+        const msg=document.getElementById('lab-msg'); msg.textContent='Saving...'; msg.className='text-sm text-on-surface-variant';
+        const hasTest = Array.from(labForm.querySelectorAll('[name="testType[]"]')).some(i => i.value.trim() !== '');
+        if (!hasTest) { msg.textContent=''; window.showError('Add at least one test.'); return; }
+        const fd=new FormData(labForm); fd.append('action', labEditingId ? 'update_result' : 'add_result'); if (labEditingId) fd.append('id', labEditingId);
+        const res=await fetch(LAB_API,{method:'POST',body:fd}).then(r=>r.json()).catch(()=>({success:false,message:'Network error'}));
+        if(res.success){ location.reload(); } else { msg.textContent=''; window.showError(res.message||'Failed to save'); }
+    }); }
+    labResetTests(); labLoadStats(); labLoadPatients(); labLoadDoctors();
+</script>
 </body></html>

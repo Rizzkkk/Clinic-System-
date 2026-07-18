@@ -1,95 +1,14 @@
 <?php
-session_start();
-require_once __DIR__ . '/db.php';
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: index.php');
-    exit;
+require_once __DIR__ . '/backend/auth/bootstrap.php';
+// Backward-compat: legacy callers (or this page's own JS) may still hit Doctor.php?api=... or
+// POST an action here. Delegate those to the module's API handler so old URLs keep working.
+if (!empty($_GET['api']) || ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']))) {
+    require __DIR__ . '/backend/api/doctors.php';
 }
-
-// Handle AJAX requests for doctor operations
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    header('Content-Type: application/json');
-    
-    $action = $_POST['action'];
-    
-    if ($action === 'add_doctor') {
-        $stmt = $conn->prepare('
-            INSERT INTO doctors (firstName, lastName, middleName, specialty, department, shift, licenseNumber, employeeId, phone, email, address, dob, gender, education, notes) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ');
-        
-        $stmt->bind_param('sssssssssssssss',
-            $_POST['firstName'],
-            $_POST['lastName'],
-            $_POST['middleName'],
-            $_POST['specialty'],
-            $_POST['department'],
-            $_POST['shift'],
-            $_POST['licenseNumber'],
-            $_POST['employeeId'],
-            $_POST['phone'],
-            $_POST['email'],
-            $_POST['address'],
-            $_POST['dob'],
-            $_POST['gender'],
-            $_POST['education'],
-            $_POST['notes']
-        );
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Doctor registered successfully']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Error: ' . $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    } elseif ($action === 'delete_doctor') {
-        $id = (int)$_POST['id'];
-        $stmt = $conn->prepare('DELETE FROM doctors WHERE id = ?');
-        $stmt->bind_param('i', $id);
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'message' => $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    }
-}
-
-// Get all doctors for API response
-if (isset($_GET['api']) && $_GET['api'] === 'get_doctors') {
-    header('Content-Type: application/json');
-    
-    $result = $conn->query('SELECT * FROM doctors ORDER BY created_at DESC');
-    $doctors = [];
-    
-    while ($row = $result->fetch_assoc()) {
-        $doctors[] = $row;
-    }
-    
-    echo json_encode($doctors);
-    exit;
-}
-
-// Get statistics
-if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
-    header('Content-Type: application/json');
-    
-    $total = $conn->query('SELECT COUNT(*) as count FROM doctors')->fetch_assoc()['count'];
-    $onDuty = $conn->query("SELECT COUNT(*) as count FROM doctors WHERE status = 'On Duty'")->fetch_assoc()['count'];
-    $load = $total > 0 ? round(($onDuty / $total) * 100) : 0;
-    
-    echo json_encode([
-        'total' => $total,
-        'onDuty' => $onDuty,
-        'load' => $load
-    ]);
-    exit;
-}
+// Guard the page load itself so the HTML shell doesn't render for a role without access.
+require_once __DIR__ . '/backend/auth/rbac.php';
+require_module_access('doctors');
+$canWriteDoctor = can_access('doctors', 'write');
 ?>
 <!DOCTYPE html>
 
@@ -204,71 +123,7 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
 </head>
 <body class="bg-background text-on-background font-body-md min-h-screen">
 <!-- SideNavBar Component -->
-<aside class="docked h-screen w-sidebar fixed left-0 top-0 flex flex-col h-full py-6 z-50" style="background-color: #00685D;">
-<div class="px-6 mb-8">
-<h1 class="text-headline-md font-headline-md font-bold text-surface-container-lowest">ASCLEPIUS Medical &<br> Diagnostic Group Inc.</h1>
-<p class="text-label-bold text-surface-variant/60 font-label-bold">Laboratory Information System</p>
-</div>
-
-<!-- Active State: Patients (Mapping to Doctors context) -->
-<nav class="flex-1 space-y-1">
-
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dashboard.php">
-<span class="material-symbols-outlined">dashboard</span>
-<span class="font-label-bold text-label-bold">Dashboard</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Patient.php">
-<span class="material-symbols-outlined">group</span>
-<span class="font-label-bold text-label-bold">Patients</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 bg-surface-variant/20 text-surface-bright rounded-lg mx-2 my-1 opacity-100 transition-colors" href="#">
-<span class="material-symbols-outlined">biotech</span>
-<span class="font-label-bold text-label-bold">Doctors</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Appointment.php">
-<span class="material-symbols-outlined">receipt_long</span>
-<span class="font-label-bold text-label-bold">Appointment</span>
-</a>
-
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Medical Records.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Medical Records</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Laboratory Result.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Laboratory Results</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Agency Referral.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Agency Referral</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Prescription.php">
-<span class="material-symbols-outlined">description</span>
-<span class="font-label-bold text-label-bold">Prescription</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Biling.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Billing</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dental.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Dental</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="X-ray.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">X-Ray</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Psych.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Psych</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-error/80 hover:text-error hover:bg-error/10 mx-2 my-1 opacity-70 transition-colors" href="index.php" onclick="localStorage.clear();">
-<span class="material-symbols-outlined">logout</span>
-<span class="font-label-bold text-label-bold">Logout</span>
-</a>
-</nav>
-
-</aside>
+<?php $active = 'doctors'; require __DIR__ . '/frontend/partials/sidebar.php'; ?>
 <!-- TopNavBar Component -->
 <header class="ml-sidebar h-16 bg-surface border-b border-outline-variant/30 sticky top-0 flex justify-between items-center px-8 z-40">
 <div></div>
@@ -288,10 +143,12 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
 <h2 class="font-headline-lg text-headline-lg text-on-background">Doctor Directory</h2>
 <p class="text-on-surface-variant font-body-md mt-1">Manage clinical staff and department assignments</p>
 </div>
+<?php if ($canWriteDoctor): ?>
 <button class="bg-primary text-on-primary px-6 py-2.5 rounded shadow-sm font-bold flex items-center gap-2 hover:bg-primary-container transition-all" onclick="openModal()">
 <span class="material-symbols-outlined">person_add</span>
                     Add new doctor
                 </button>
+<?php endif; ?>
 </div>
 <!-- Summary Bento Grid -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-card-gap">
@@ -533,6 +390,10 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
 <label class="text-label-bold text-on-surface-variant block">Notes</label>
 <textarea class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all resize-none" name="notes" rows="3" placeholder="Additional notes or comments"></textarea>
 </div>
+<div class="space-y-1.5">
+<label class="text-label-bold text-on-surface-variant block">Signature image (optional) &mdash; JPG only, used on the doctor's PDF reports</label>
+<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="file" name="signature" accept=".jpg,.jpeg,image/jpeg"/>
+</div>
 <div class="flex gap-3 pt-4">
 <button type="button" onclick="closeModal()" class="flex-1 px-6 py-3 border border-outline-variant rounded-lg text-label-bold text-label-bold hover:bg-surface-container transition-colors">
 Cancel
@@ -547,6 +408,9 @@ Register Doctor
 <!-- Success Message Micro-interaction Container -->
 <div class="fixed bottom-8 right-8 z-[60]" id="toast-container"></div>
 <script>
+        const CAN_WRITE = <?php echo $canWriteDoctor ? 'true' : 'false'; ?>;
+        let DOCTORS_CACHE = [];
+        let editingDoctorId = null;
         // Modal functionality
         function openModal() {
             const modal = document.getElementById('doctorModal');
@@ -578,20 +442,26 @@ Register Doctor
 
         // Doctor data management - using database API
         function getDoctors() {
-            return fetch('?api=get_doctors')
+            return fetch('backend/api/doctors.php?api=get_doctors')
                 .then(r => r.json())
                 .catch(() => []);
         }
 
-        function saveDoctor(doctorData) {
-            const formData = new FormData();
-            formData.append('action', 'add_doctor');
-            Object.entries(doctorData).forEach(([k, v]) => formData.append(k, v || ''));
-            
-            return fetch(window.location.href, {
-                method: 'POST',
-                body: formData
-            }).then(r => r.json());
+        // Sends the real form FormData (so the signature file input is included), tagging the
+        // action as add or update depending on edit mode.
+        function saveDoctor(fd) {
+            fd.append('action', editingDoctorId ? 'update_doctor' : 'add_doctor');
+            if (editingDoctorId) fd.append('id', editingDoctorId);
+            return fetch('backend/api/doctors.php', { method: 'POST', body: fd }).then(r => r.json());
+        }
+
+        function editDoctor(id) {
+            const d = (DOCTORS_CACHE || []).find(x => Number(x.id) === Number(id));
+            if (!d) return;
+            editingDoctorId = id;
+            const f = document.getElementById('doctorForm');
+            ['firstName','lastName','middleName','specialty','department','shift','licenseNumber','employeeId','phone','email','address','dob','gender','education','notes'].forEach(k => { const el = f.elements[k]; if (el) el.value = (d[k] == null) ? '' : d[k]; });
+            openModal();
         }
 
         function deleteDoctor(id) {
@@ -599,7 +469,7 @@ Register Doctor
             formData.append('action', 'delete_doctor');
             formData.append('id', id);
             
-            return fetch(window.location.href, {
+            return fetch('backend/api/doctors.php', {
                 method: 'POST',
                 body: formData
             }).then(r => r.json());
@@ -614,27 +484,9 @@ Register Doctor
             btn.innerHTML = '<span class="animate-spin inline-block mr-2 material-symbols-outlined align-middle" style="font-size: 1.2rem;">progress_activity</span> Saving...';
             btn.classList.add('opacity-80', 'pointer-events-none');
             
-            // Collect form data
-            const formData = new FormData(doctorForm);
-            const doctorData = {
-                firstName: formData.get('firstName'),
-                lastName: formData.get('lastName'),
-                middleName: formData.get('middleName'),
-                specialty: formData.get('specialty'),
-                department: formData.get('department'),
-                shift: formData.get('shift'),
-                licenseNumber: formData.get('licenseNumber'),
-                employeeId: formData.get('employeeId'),
-                phone: formData.get('phone'),
-                email: formData.get('email'),
-                address: formData.get('address'),
-                dob: formData.get('dob'),
-                gender: formData.get('gender'),
-                education: formData.get('education'),
-                notes: formData.get('notes')
-            };
-            
-            saveDoctor(doctorData).then(result => {
+            // Send the real FormData (includes the optional signature file).
+            const fd = new FormData(doctorForm);
+            saveDoctor(fd).then(result => {
                 if (result.success) {
                     btn.innerHTML = '<span class="material-symbols-outlined align-middle mr-2">check_circle</span> Doctor Registered';
                     btn.classList.replace('bg-primary', 'bg-emerald-600');
@@ -653,6 +505,7 @@ Register Doctor
                         btn.innerText = originalText;
                         btn.classList.replace('bg-emerald-600', 'bg-primary');
                         btn.classList.remove('opacity-80', 'pointer-events-none');
+                        editingDoctorId = null;
                         doctorForm.reset();
                         closeModal();
                         loadDoctors();
@@ -718,7 +571,7 @@ Register Doctor
 
         // Update statistics
         async function updateStatistics() {
-            const response = await fetch('?api=get_stats').then(r => r.json());
+            const response = await fetch('backend/api/doctors.php?api=get_stats').then(r => r.json());
             document.getElementById('totalDoctorsCount').textContent = response.total || 0;
             document.getElementById('onDutyDoctorsCount').textContent = response.onDuty || 0;
             document.getElementById('departmentLoadCount').textContent = (response.load || 0) + '%';
@@ -800,6 +653,7 @@ Register Doctor
 
         // Display paginated results
         function displayPage(doctors, page) {
+            DOCTORS_CACHE = doctors;
             const start = (page - 1) * itemsPerPage;
             const end = start + itemsPerPage;
             const paginatedDoctors = doctors.slice(start, end);
@@ -835,10 +689,11 @@ Register Doctor
                             ${doctor.status || 'Offline'}
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-right">
-                        <button onclick="deleteDoctor(${doctor.id}).then(() => { loadDoctors(); updateShiftSchedule(); updateStatistics(); })" class="p-2 hover:bg-error-container rounded-full transition-all text-error hover:text-on-error-container">
-                            <span class="material-symbols-outlined">delete</span>
-                        </button>
+                    <td class="px-6 py-4 text-right whitespace-nowrap">
+                        ${CAN_WRITE ? `
+                        <button onclick="editDoctor(${doctor.id})" class="p-2 hover:bg-primary/10 rounded-full transition-all text-primary" title="Edit"><span class="material-symbols-outlined">edit</span></button>
+                        <button onclick="deleteDoctor(${doctor.id}).then(() => { loadDoctors(); updateShiftSchedule(); updateStatistics(); })" class="p-2 hover:bg-error-container rounded-full transition-all text-error hover:text-on-error-container"><span class="material-symbols-outlined">delete</span></button>
+                        ` : ''}
                     </td>
                 `;
                 tbody.appendChild(row);

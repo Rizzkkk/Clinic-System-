@@ -1,0 +1,13 @@
+# Secrets — never commit real credentials
+.env
+backend/config/.env
+*.local.php
+
+# Uploaded files (bytes live on disk; the DB stores only the path)
+storage/xray/
+storage/signatures/
+
+# OS / editor noise
+Thumbs.db
+.DS_Store
+*.swp

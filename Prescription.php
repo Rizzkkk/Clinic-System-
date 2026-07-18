@@ -1,105 +1,22 @@
 <?php
-session_start();
-require_once __DIR__ . '/db.php';
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: index.php');
-    exit;
+require_once __DIR__ . '/backend/auth/bootstrap.php';
+// Backward-compat: this page's data API now lives in backend/api/prescriptions.php.
+if (!empty($_GET['api']) || ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']))) {
+    require __DIR__ . '/backend/api/prescriptions.php';
 }
 
-// Handle AJAX requests for prescription operations
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    header('Content-Type: application/json');
-    
-    $action = $_POST['action'];
-    
-    if ($action === 'add_prescription') {
-        $stmt = $conn->prepare('
-            INSERT INTO prescriptions (patientId, doctorId, medicationName, dosage, frequency, duration, prescriptionDate, expiryDate, notes) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ');
-        
-        $stmt->bind_param('iisssssss',
-            $_POST['patientId'],
-            $_POST['doctorId'],
-            $_POST['medicationName'],
-            $_POST['dosage'],
-            $_POST['frequency'],
-            $_POST['duration'],
-            $_POST['prescriptionDate'],
-            $_POST['expiryDate'],
-            $_POST['notes']
-        );
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Prescription added successfully']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Error: ' . $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    } elseif ($action === 'delete_prescription') {
-        $id = (int)$_POST['id'];
-        $stmt = $conn->prepare('DELETE FROM prescriptions WHERE id = ?');
-        $stmt->bind_param('i', $id);
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'message' => $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    }
-}
+require_once __DIR__ . '/backend/auth/rbac.php';
+require_module_access('prescriptions');
+$canWriteRx = can_access('prescriptions', 'write');
 
-// Get all prescriptions for API response
-if (isset($_GET['api']) && $_GET['api'] === 'get_prescriptions') {
-    header('Content-Type: application/json');
-    
-    $result = $conn->query('
-        SELECT p.id, p.medicationName, p.dosage, p.frequency, p.duration, p.prescriptionDate, p.expiryDate, p.status, p.notes,
-               pt.firstName as patientFirstName, pt.lastName as patientLastName,
-               d.firstName as doctorFirstName, d.lastName as doctorLastName
-        FROM prescriptions p 
-        JOIN patients pt ON p.patientId = pt.id 
-        JOIN doctors d ON p.doctorId = d.id 
-        ORDER BY p.prescriptionDate DESC
-    ');
-    $prescriptions = [];
-    
-    while ($row = $result->fetch_assoc()) {
-        $prescriptions[] = $row;
-    }
-    
-    echo json_encode($prescriptions);
-    exit;
-}
-
-// Get statistics
-if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
-    header('Content-Type: application/json');
-    
-    $total = $conn->query('SELECT COUNT(*) as count FROM prescriptions')->fetch_assoc()['count'];
-    $active = $conn->query("SELECT COUNT(*) as count FROM prescriptions WHERE status = 'Active' AND expiryDate >= CURDATE()")->fetch_assoc()['count'];
-    $expired = $conn->query("SELECT COUNT(*) as count FROM prescriptions WHERE expiryDate < CURDATE()")->fetch_assoc()['count'];
-    
-    echo json_encode([
-        'total' => $total,
-        'active' => $active,
-        'expired' => $expired
-    ]);
-    exit;
-}
-
+// --- Server-rendered table data below (uses $conn from bootstrap) ---
 function h($value) {
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
 
 $prescriptionRows = [];
 $prescriptionResult = $conn->query('
-    SELECT p.id, p.medicationName, p.dosage, p.frequency, p.duration, p.prescriptionDate, p.expiryDate, p.status, p.notes,
+    SELECT p.id, p.patientId, p.doctorId, p.medicationName, p.dosage, p.frequency, p.duration, p.prescriptionDate, p.expiryDate, p.status, p.notes,
            pt.firstName as patientFirstName, pt.lastName as patientLastName,
            d.firstName as doctorFirstName, d.lastName as doctorLastName
     FROM prescriptions p
@@ -226,68 +143,7 @@ if ($prescriptionResult) {
 </head>
 <body class="font-body-md text-on-background">
 <!-- SideNavBar Component -->
-<aside class="fixed left-0 top-0 h-full w-[260px] flex flex-col py-6 z-50" style="background-color: #00685D;">
-<div class="px-6 mb-8">
-<h1 class="text-headline-md font-headline-md font-bold text-surface-container-lowest">ASCLEPIUS Medical &<br> Diagnostic Group Inc.</h1>
-<p class="text-label-bold text-surface-variant/60 font-label-bold">Laboratory Information System</p>
-</div>
-<nav class="flex-1 space-y-1">
-
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dashboard.php">
-<span class="material-symbols-outlined">dashboard</span>
-<span class="font-label-bold text-label-bold">Dashboard</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Patient.php">
-<span class="material-symbols-outlined">group</span>
-<span class="font-label-bold text-label-bold">Patients</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Doctor.php">
-<span class="material-symbols-outlined">biotech</span>
-<span class="font-label-bold text-label-bold">Doctors</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Appointment.php">
-<span class="material-symbols-outlined">receipt_long</span>
-<span class="font-label-bold text-label-bold">Appointment</span>
-</a>
-
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Medical Records.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Medical Records</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Laboratory Result.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Laboratory Results</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Agency Referral.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Agency Referral</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 bg-surface-variant/20 text-surface-bright rounded-lg mx-2 my-1 opacity-100 transition-colors" href="#">
-<span class="material-symbols-outlined">description</span>
-<span class="font-label-bold text-label-bold">Prescription</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Biling.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Billing</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dental.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Dental</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="X-ray.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">X-Ray</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Psych.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Psych</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-error/80 hover:text-error hover:bg-error/10 mx-2 my-1 opacity-70 transition-colors" href="index.php" onclick="localStorage.clear();">
-<span class="material-symbols-outlined">logout</span>
-<span class="font-label-bold text-label-bold">Logout</span>
-</a>
-</nav>
-</aside>
+<?php $active = 'prescriptions'; require __DIR__ . '/frontend/partials/sidebar.php'; ?>
 <!-- TopAppBar Component -->
 <header class="fixed top-0 left-[260px] right-0 h-16 bg-surface-bright border-b border-outline-variant flex items-center justify-between px-6 z-40 shadow-sm">
 <div class="flex items-center flex-1 max-w-xl">
@@ -310,89 +166,58 @@ if ($prescriptionResult) {
 <!-- Page Header -->
 <div class="flex items-center justify-between mb-8">
 <div>
-<nav class="flex items-center text-sm text-on-surface-variant mb-2">
-<span>Patients</span>
-<span class="material-symbols-outlined text-xs mx-2">chevron_right</span>
-<span>Elena Rodriguez</span>
-<span class="material-symbols-outlined text-xs mx-2">chevron_right</span>
-<span class="text-primary font-bold">Prescriptions</span>
-</nav>
-<h2 class="font-headline-lg text-headline-lg text-on-surface flex items-center gap-3">
-                    Prescriptions
-                    <span class="px-2 py-0.5 bg-surface-container-highest text-label-bold rounded text-on-surface-variant">PID: 4492-ER</span>
-</h2>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Prescriptions</h2>
+<p class="text-body-sm text-on-surface-variant mt-1">Create and review patient prescriptions.</p>
 </div>
-<button class="bg-primary text-on-primary px-6 py-2.5 rounded-lg font-label-bold flex items-center gap-2 hover:opacity-90 transition-all shadow-sm" onclick="openNewPrescriptionModal()">
-<span class="material-symbols-outlined">add</span>
-                NEW PRESCRIPTION
-            </button>
 </div>
 <!-- Summary Grid -->
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-<!-- Active Prescriptions -->
-<div class="bg-white border border-outline-variant rounded-xl p-5 shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer">
+<div class="bg-white border border-outline-variant rounded-xl p-5 shadow-sm">
 <div class="flex items-center justify-between mb-4">
-<div class="p-2 bg-primary/10 rounded-lg text-primary">
-<span class="material-symbols-outlined">medication</span>
+<div class="p-2 bg-primary/10 rounded-lg text-primary"><span class="material-symbols-outlined">medication</span></div>
+<span id="stat-total" class="text-headline-md font-bold text-on-surface">0</span>
 </div>
-<span class="text-headline-md font-bold text-on-surface">0</span>
+<p class="text-on-surface-variant font-label-bold">TOTAL PRESCRIPTIONS</p>
 </div>
-<p class="text-on-surface-variant font-label-bold">ACTIVE PRESCRIPTIONS</p>
-<p class="text-xs text-on-surface-variant/70 mt-1">0 renewed this month</p>
-</div>
-<!-- Pending Pickup -->
-<div class="bg-white border border-outline-variant rounded-xl p-5 shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer">
+<div class="bg-white border border-outline-variant rounded-xl p-5 shadow-sm">
 <div class="flex items-center justify-between mb-4">
-<div class="p-2 bg-secondary-container/30 rounded-lg text-secondary">
-<span class="material-symbols-outlined">local_pharmacy</span>
+<div class="p-2 bg-primary/10 rounded-lg text-primary"><span class="material-symbols-outlined">check_circle</span></div>
+<span id="stat-active" class="text-headline-md font-bold text-on-surface">0</span>
 </div>
-<span class="text-headline-md font-bold text-on-surface">0</span>
+<p class="text-on-surface-variant font-label-bold">ACTIVE</p>
 </div>
-<p class="text-on-surface-variant font-label-bold">PENDING PHARMACY PICKUP</p>
-<p class="text-xs text-on-surface-variant/70 mt-1">Awaiting verification at CVS #421</p>
-</div>
-<!-- Renewal Requests -->
-<div class="bg-white border border-outline-variant rounded-xl p-5 shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 cursor-pointer">
+<div class="bg-white border border-outline-variant rounded-xl p-5 shadow-sm">
 <div class="flex items-center justify-between mb-4">
-<div class="p-2 bg-error-container/30 rounded-lg text-error">
-<span class="material-symbols-outlined">autorenew</span>
+<div class="p-2 bg-error-container/30 rounded-lg text-error"><span class="material-symbols-outlined">schedule</span></div>
+<span id="stat-expired" class="text-headline-md font-bold text-on-surface">0</span>
 </div>
-<span class="text-headline-md font-bold text-on-surface">0</span>
-</div>
-<p class="text-on-surface-variant font-label-bold">RENEWAL REQUESTS</p>
-<p class="text-xs text-error font-bold mt-1">Requires immediate review</p>
+<p class="text-on-surface-variant font-label-bold">EXPIRED</p>
 </div>
 </div>
 <div class="grid grid-cols-12 gap-6 items-start">
 <!-- Left: Prescription Table -->
 <div class="col-span-12 lg:col-span-8 space-y-6">
-<div class="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300">
+<div class="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm">
 <div class="px-6 py-4 border-b border-outline-variant bg-surface-container-low flex items-center justify-between">
-<h3 class="font-headline-md text-headline-md">Current Medications</h3>
-<div class="flex items-center gap-2">
-<button class="p-2 hover:bg-surface-container text-on-surface-variant rounded-lg">
-<span class="material-symbols-outlined">filter_list</span>
-</button>
-<button class="p-2 hover:bg-surface-container text-on-surface-variant rounded-lg" onclick="window.print()">
-<span class="material-symbols-outlined">print</span>
-</button>
-</div>
+<h3 class="font-headline-md text-headline-md">Current Prescriptions</h3>
+<button class="p-2 hover:bg-surface-container text-on-surface-variant rounded-lg" onclick="window.print()"><span class="material-symbols-outlined">print</span></button>
 </div>
 <div class="overflow-x-auto">
 <table class="w-full text-left border-collapse">
 <thead>
 <tr class="bg-surface-container-low/50">
-<th class="px-6 py-3 text-label-caps text-on-surface-variant border-b border-outline-variant">MEDICATION NAME</th>
+<th class="px-6 py-3 text-label-caps text-on-surface-variant border-b border-outline-variant">MEDICATION</th>
+<th class="px-6 py-3 text-label-caps text-on-surface-variant border-b border-outline-variant">PATIENT</th>
 <th class="px-6 py-3 text-label-caps text-on-surface-variant border-b border-outline-variant">DOSAGE</th>
 <th class="px-6 py-3 text-label-caps text-on-surface-variant border-b border-outline-variant">FREQUENCY</th>
-<th class="px-6 py-3 text-label-caps text-on-surface-variant border-b border-outline-variant">DURATION</th>
 <th class="px-6 py-3 text-label-caps text-on-surface-variant border-b border-outline-variant">PRESCRIBED BY</th>
 <th class="px-6 py-3 text-label-caps text-on-surface-variant border-b border-outline-variant text-center">STATUS</th>
+<th class="px-6 py-3 text-label-caps text-on-surface-variant border-b border-outline-variant text-right">ACTIONS</th>
 </tr>
 </thead>
 <tbody class="divide-y divide-outline-variant/30">
 <?php if (empty($prescriptionRows)): ?>
-<tr><td colspan="6" class="px-6 py-10 text-center text-body-sm text-on-surface-variant">No prescriptions found.</td></tr>
+<tr><td colspan="7" class="px-6 py-10 text-center text-body-sm text-on-surface-variant">No prescriptions found.</td></tr>
 <?php else: ?>
 <?php foreach ($prescriptionRows as $prescription): ?>
 <?php
@@ -401,16 +226,15 @@ $status = $isExpired ? 'Expired' : ($prescription['status'] ?: 'Active');
 $statusClass = $isExpired ? 'bg-error-container text-on-error-container' : 'bg-primary-fixed text-on-primary-fixed';
 ?>
 <tr class="hover:bg-surface-container-low/30 transition-colors">
-<td class="px-6 py-4">
-<div class="font-bold text-on-surface"><?php echo h($prescription['medicationName']); ?></div>
-<div class="text-xs text-on-surface-variant"><?php echo h($prescription['patientFirstName'] . ' ' . $prescription['patientLastName']); ?></div>
-</td>
+<td class="px-6 py-4 font-bold text-on-surface"><?php echo h($prescription['medicationName']); ?></td>
+<td class="px-6 py-4 text-on-surface"><?php echo h($prescription['patientFirstName'] . ' ' . $prescription['patientLastName']); ?></td>
 <td class="px-6 py-4 text-on-surface"><?php echo h($prescription['dosage']); ?></td>
 <td class="px-6 py-4 text-on-surface"><?php echo h($prescription['frequency']); ?></td>
-<td class="px-6 py-4 text-on-surface"><?php echo h($prescription['duration']); ?></td>
-<td class="px-6 py-4 text-on-surface"><?php echo h('Dr. ' . $prescription['doctorLastName']); ?></td>
-<td class="px-6 py-4 text-center">
-<span class="inline-block px-3 py-1 rounded-full <?php echo $statusClass; ?> text-label-bold uppercase"><?php echo h($status); ?></span>
+<td class="px-6 py-4 text-on-surface"><?php echo h('Dr. ' . $prescription['doctorFirstName'] . ' ' . $prescription['doctorLastName']); ?></td>
+<td class="px-6 py-4 text-center"><span class="inline-block px-3 py-1 rounded-full <?php echo $statusClass; ?> text-label-bold uppercase"><?php echo h($status); ?></span></td>
+<td class="px-6 py-4 text-right whitespace-nowrap">
+<a target="_blank" rel="noopener" href="backend/api/prescriptions.php?api=prescription_pdf&amp;id=<?php echo (int)$prescription['id']; ?>" class="inline-flex text-primary hover:bg-primary/10 rounded-lg p-1.5 align-middle" title="Print prescription (PDF)"><span class="material-symbols-outlined">picture_as_pdf</span></a>
+<?php if ($canWriteRx): ?><button onclick="rxStartEdit(<?php echo (int)$prescription['id']; ?>)" class="text-primary hover:bg-primary/10 rounded-lg p-1.5 align-middle" title="Edit"><span class="material-symbols-outlined">edit</span></button><button onclick="rxDelete(<?php echo (int)$prescription['id']; ?>)" class="text-error hover:bg-error/10 rounded-lg p-1.5 align-middle" title="Delete"><span class="material-symbols-outlined">delete</span></button><?php endif; ?>
 </td>
 </tr>
 <?php endforeach; ?>
@@ -419,293 +243,118 @@ $statusClass = $isExpired ? 'bg-error-container text-on-error-container' : 'bg-p
 </table>
 </div>
 </div>
-<!-- Interaction Alert History -->
-<div class="bg-white border border-outline-variant rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
-<div class="flex items-center gap-3 mb-4">
-<span class="material-symbols-outlined text-tertiary">history</span>
-<h3 class="font-headline-md text-headline-md">Interaction Logs</h3>
 </div>
-<div class="space-y-3">
-</div>
-</div>
-</div>
-<!-- Right: Quick Prescribe Sidebar -->
+<!-- Right: New Prescription (write access only) -->
+<?php if ($canWriteRx): ?>
 <div class="col-span-12 lg:col-span-4 space-y-6">
-<div class="bg-white border border-outline-variant rounded-xl p-6 shadow-sm sticky top-24 hover:shadow-md transition-shadow duration-300">
-<h3 class="font-headline-md text-headline-md mb-6">Quick Prescribe</h3>
-<form class="space-y-5" onsubmit="return false;">
+<div class="bg-white border border-outline-variant rounded-xl p-6 shadow-sm sticky top-24">
+<h3 class="font-headline-md text-headline-md mb-6">New Prescription</h3>
+<form id="rx-form" class="space-y-4">
 <div>
-<label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Medication Search</label>
-<div class="relative">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-<input class="w-full bg-white border border-outline-variant rounded-lg py-2.5 pl-10 pr-4 focus:ring-2 focus:ring-primary focus:border-primary text-body-md transition-all" id="med-search" placeholder="e.g. Ibuprofen..." type="text"/>
+<label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Patient</label>
+<select id="rx-patient" name="patientId" required class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary text-body-md"><option value="">Select patient</option></select>
 </div>
+<div>
+<label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Prescribing Doctor</label>
+<select id="rx-doctor" name="doctorId" required class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary text-body-md"><option value="">Select doctor</option></select>
+</div>
+<div>
+<label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Medication</label>
+<input name="medicationName" required placeholder="e.g. Amoxicillin" class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary text-body-md"/>
 </div>
 <div class="grid grid-cols-2 gap-4">
 <div>
 <label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Dosage</label>
-<input class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-body-md transition-all" placeholder="e.g. 200mg" type="text"/>
+<input name="dosage" placeholder="e.g. 250mg" class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary text-body-md"/>
 </div>
 <div>
 <label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Frequency</label>
-<select class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-body-md transition-all">
-<option>Daily</option>
-<option>BID (2x/day)</option>
-<option>TID (3x/day)</option>
-<option>QID (4x/day)</option>
-<option>As needed</option>
+<select name="frequency" class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary text-body-md">
+<option value="">Select</option><option>Daily</option><option>BID (2x/day)</option><option>TID (3x/day)</option><option>QID (4x/day)</option><option>As needed</option>
 </select>
 </div>
 </div>
 <div>
-<label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Route</label>
-<select class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-body-md transition-all">
-<option>Oral</option>
-<option>Intravenous</option>
-<option>Topical</option>
-<option>Subcutaneous</option>
-</select>
+<label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Duration</label>
+<input name="duration" placeholder="e.g. 10 Days" class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary text-body-md"/>
 </div>
-<!-- Interaction Alert (Hidden by default) -->
-<div class="hidden animate-pulse" id="interaction-alert">
-<div class="bg-error-container border border-error/20 rounded-lg p-4 flex gap-3">
-<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+<div class="grid grid-cols-2 gap-4">
 <div>
-<p class="text-on-error-container font-bold text-sm">HIGH RISK INTERACTION</p>
-<p class="text-on-error-container text-xs mt-1">Potassium chloride may interact with Lisinopril. Risk of hyperkalemia.</p>
+<label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Prescribed</label>
+<input name="prescriptionDate" type="date" required class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary text-body-md"/>
+</div>
+<div>
+<label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Expires</label>
+<input name="expiryDate" type="date" class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary text-body-md"/>
 </div>
 </div>
+<div>
+<label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Notes</label>
+<textarea name="notes" rows="2" placeholder="Additional instructions..." class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary text-body-md"></textarea>
 </div>
-<div class="pt-4 space-y-3">
-<button class="w-full border border-primary text-primary font-label-bold py-3 rounded-lg hover:bg-primary/5 transition-all flex items-center justify-center gap-2" onclick="checkInteraction()">
-<span class="material-symbols-outlined text-lg">verified_user</span>
-                                CHECK FOR INTERACTIONS
-                            </button>
-<button class="w-full bg-primary text-on-primary font-label-bold py-3 rounded-lg hover:opacity-90 transition-all shadow-md">
-                                ADD TO PRESCRIPTION
-                            </button>
-</div>
+<button type="submit" class="w-full bg-primary text-on-primary font-label-bold py-3 rounded-lg hover:opacity-90 transition-all shadow-md">CREATE PRESCRIPTION</button>
+<p id="rx-msg" class="text-sm text-center"></p>
 </form>
-<!-- Pharmacy Note -->
-<div class="mt-8 pt-6 border-t border-outline-variant">
-<div class="flex items-center gap-2 mb-3">
-<span class="material-symbols-outlined text-secondary text-sm">store</span>
-<span class="font-label-bold text-on-surface-variant">PREFERRED PHARMACY</span>
-</div>
-<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant/30 hover:shadow-md transition-shadow duration-300 cursor-pointer">
-<p class="text-body-md font-bold">CVS Pharmacy #421</p>
-<p class="text-xs text-on-surface-variant mt-0.5">852 Clinical Way, San Francisco, CA</p>
-<a class="text-primary text-xs font-bold mt-2 inline-block" href="#">Change Pharmacy</a>
 </div>
 </div>
-</div>
-</div>
+<?php endif; ?>
 </div>
 </main>
-
-<!-- New Prescription Modal -->
-<div class="fixed inset-0 bg-black/50 z-50 hidden items-center justify-center" id="new-prescription-modal">
-    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
-        <div class="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
-            <h3 class="font-headline-md text-headline-md">Create New Prescription</h3>
-            <button onclick="closeNewPrescriptionModal()" class="hover:bg-surface-container rounded-full p-2 transition-all">
-                <span class="material-symbols-outlined text-on-surface-variant">close</span>
-            </button>
-        </div>
-        <form id="new-prescription-form" class="p-6 space-y-5" onsubmit="submitNewPrescription(event)">
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Patient Name</label>
-                    <input class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-body-md transition-all" id="patient-name" placeholder="Enter patient name" type="text" required/>
-                </div>
-                <div>
-                    <label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Patient ID</label>
-                    <input class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-body-md transition-all" id="patient-id" placeholder="Enter patient ID" type="text" required/>
-                </div>
-            </div>
-            <div>
-                <label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Medication Name</label>
-                <input class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-body-md transition-all" id="medication-name" placeholder="e.g. Amoxicillin" type="text" required/>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Dosage</label>
-                    <input class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-body-md transition-all" id="dosage" placeholder="e.g. 250mg" type="text" required/>
-                </div>
-                <div>
-                    <label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Frequency</label>
-                    <select class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-body-md transition-all" id="frequency" required>
-                        <option value="">Select frequency</option>
-                        <option>Daily</option>
-                        <option>BID (2x/day)</option>
-                        <option>TID (3x/day)</option>
-                        <option>QID (4x/day)</option>
-                        <option>As needed</option>
-                    </select>
-                </div>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Duration</label>
-                    <input class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-body-md transition-all" id="duration" placeholder="e.g. 10 Days" type="text" required/>
-                </div>
-                <div>
-                    <label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Route</label>
-                    <select class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-body-md transition-all" id="route" required>
-                        <option value="">Select route</option>
-                        <option>Oral</option>
-                        <option>Intravenous</option>
-                        <option>Topical</option>
-                        <option>Subcutaneous</option>
-                    </select>
-                </div>
-            </div>
-            <div>
-                <label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Prescribed By</label>
-                <input class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-body-md transition-all" id="prescribed-by" placeholder="Dr. Name" type="text" required/>
-            </div>
-            <div>
-                <label class="block text-label-bold text-on-surface-variant mb-1.5 uppercase">Notes</label>
-                <textarea class="w-full bg-white border border-outline-variant rounded-lg py-2.5 px-4 focus:ring-2 focus:ring-primary focus:border-primary text-body-md transition-all" id="notes" placeholder="Additional instructions..." rows="3"></textarea>
-            </div>
-            <div class="flex gap-3 pt-4">
-                <button type="button" onclick="closeNewPrescriptionModal()" class="flex-1 border border-outline-variant text-on-surface font-label-bold py-3 rounded-lg hover:bg-surface-container transition-all">
-                    CANCEL
-                </button>
-                <button type="submit" class="flex-1 bg-primary text-on-primary font-label-bold py-3 rounded-lg hover:opacity-90 transition-all shadow-md">
-                    CREATE PRESCRIPTION
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <script>
-        function openNewPrescriptionModal() {
-            const modal = document.getElementById('new-prescription-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        function closeNewPrescriptionModal() {
-            const modal = document.getElementById('new-prescription-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-            document.getElementById('new-prescription-form').reset();
-        }
-
-        function submitNewPrescription(event) {
-            event.preventDefault();
-            
-            const medicationName = document.getElementById('medication-name').value;
-            const dosage = document.getElementById('dosage').value;
-            const frequency = document.getElementById('frequency').value;
-            const duration = document.getElementById('duration').value;
-            const prescribedBy = document.getElementById('prescribed-by').value;
-            
-            // Add to table
-            const tbody = document.querySelector('tbody');
-            const newRow = document.createElement('tr');
-            newRow.className = 'hover:bg-surface-container-low/30 transition-colors';
-            newRow.innerHTML = `
-                <td class="px-6 py-4">
-                    <div class="font-bold text-on-surface">${medicationName}</div>
-                    <div class="text-xs text-on-surface-variant">Prescription</div>
-                </td>
-                <td class="px-6 py-4 text-on-surface">${dosage}</td>
-                <td class="px-6 py-4 text-on-surface">${frequency}</td>
-                <td class="px-6 py-4 text-on-surface">${duration}</td>
-                <td class="px-6 py-4 text-on-surface">${prescribedBy}</td>
-                <td class="px-6 py-4 text-center">
-                    <span class="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-label-bold">ACTIVE</span>
-                </td>
-            `;
-            
-            // Insert after the header row
-            tbody.insertBefore(newRow, tbody.firstChild);
-            
-            // Update active prescriptions count
-            const countElement = document.querySelector('.text-headline-md.font-bold.text-on-surface');
-            if (countElement) {
-                countElement.textContent = parseInt(countElement.textContent) + 1;
-            }
-            
-            closeNewPrescriptionModal();
-            alert('Prescription created successfully!');
-        }
-
-        function checkInteraction() {
-            const medInput = document.getElementById('med-search').value.toLowerCase();
-            const alertBox = document.getElementById('interaction-alert');
-            
-            // Simulating an interaction check for demonstration
-            if (medInput.includes('potassium') || medInput.includes('kcl')) {
-                alertBox.classList.remove('hidden');
-                alertBox.classList.add('flex');
-            } else {
-                alertBox.classList.add('hidden');
-                alertBox.classList.remove('flex');
-                alert('Interaction Check: No major contraindications found for this medication with the current patient profile.');
-            }
-        }
-
-        // Make Quick Prescribe form functional
-        document.querySelector('.sticky.top-24 form').addEventListener('submit', function(event) {
-            event.preventDefault();
-            
-            const medSearch = document.getElementById('med-search').value;
-            const dosage = this.querySelector('input[placeholder="e.g. 200mg"]').value;
-            const frequency = this.querySelector('select:nth-of-type(1)').value;
-            const route = this.querySelector('select:nth-of-type(2)').value;
-            
-            if (!medSearch || !dosage) {
-                alert('Please fill in medication name and dosage.');
-                return;
-            }
-            
-            // Add to table
-            const tbody = document.querySelector('tbody');
-            const newRow = document.createElement('tr');
-            newRow.className = 'hover:bg-surface-container-low/30 transition-colors';
-            newRow.innerHTML = `
-                <td class="px-6 py-4">
-                    <div class="font-bold text-on-surface">${medSearch}</div>
-                    <div class="text-xs text-on-surface-variant">Quick Prescribe</div>
-                </td>
-                <td class="px-6 py-4 text-on-surface">${dosage}</td>
-                <td class="px-6 py-4 text-on-surface">${frequency}</td>
-                <td class="px-6 py-4 text-on-surface">As prescribed</td>
-                <td class="px-6 py-4 text-on-surface">Dr. Current</td>
-                <td class="px-6 py-4 text-center">
-                    <span class="inline-block px-3 py-1 rounded-full bg-primary/10 text-primary text-label-bold">ACTIVE</span>
-                </td>
-            `;
-            
-            tbody.insertBefore(newRow, tbody.firstChild);
-            
-            // Update active prescriptions count
-            const countElement = document.querySelector('.text-headline-md.font-bold.text-on-surface');
-            if (countElement) {
-                countElement.textContent = parseInt(countElement.textContent) + 1;
-            }
-            
-            // Reset form
-            this.reset();
-            alert('Medication added to prescription successfully!');
+    const RX_API = 'backend/api/prescriptions.php';
+    const RX_ROWS = <?php echo json_encode($prescriptionRows, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
+    let rxEditingId = null;
+    function rxStartEdit(id) {
+        const r = RX_ROWS.find(x => Number(x.id) === Number(id));
+        const f = document.getElementById('rx-form');
+        if (!r || !f) return;
+        rxEditingId = id;
+        ['patientId','doctorId','medicationName','dosage','frequency','duration','prescriptionDate','expiryDate','notes'].forEach(k => {
+            const el = f.elements[k]; if (el) el.value = (r[k] == null) ? '' : r[k];
         });
-
-        // Add visual micro-interactions to table rows
-        document.querySelectorAll('tbody tr').forEach(row => {
-            row.addEventListener('mouseenter', () => {
-                row.style.cursor = 'pointer';
-            });
+        const b = f.querySelector('button[type="submit"]'); if (b) b.textContent = 'UPDATE PRESCRIPTION';
+        const m = document.getElementById('rx-msg'); if (m) { m.textContent = 'Editing prescription #' + id + ' - submit to save, or reload to cancel'; m.className = 'text-sm text-center text-on-surface-variant'; }
+        f.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    async function rxLoadStats() {
+        const s = await fetch(RX_API + '?api=get_stats').then(r => r.json()).catch(() => ({}));
+        document.getElementById('stat-total').textContent = s.total ?? 0;
+        document.getElementById('stat-active').textContent = s.active ?? 0;
+        document.getElementById('stat-expired').textContent = s.expired ?? 0;
+    }
+    async function rxLoadPatients() {
+        const sel = document.getElementById('rx-patient');
+        if (!sel) return;
+        const list = await fetch('backend/api/patients.php?api=get_patients').then(r => r.ok ? r.json() : []).catch(() => []);
+        list.forEach(p => { const o = document.createElement('option'); o.value = p.id; o.textContent = p.firstName + ' ' + p.lastName; sel.appendChild(o); });
+    }
+    async function rxLoadDoctors() {
+        const sel = document.getElementById('rx-doctor');
+        if (!sel) return;
+        const list = await fetch('backend/api/doctors.php?api=get_doctors').then(r => r.ok ? r.json() : []).catch(() => []);
+        list.forEach(d => { const o = document.createElement('option'); o.value = d.id; o.textContent = 'Dr. ' + d.firstName + ' ' + d.lastName; sel.appendChild(o); });
+    }
+    const rxForm = document.getElementById('rx-form');
+    if (rxForm) {
+        rxForm.addEventListener('submit', async e => {
+            e.preventDefault();
+            const msg = document.getElementById('rx-msg');
+            msg.textContent = 'Saving...'; msg.className = 'text-sm text-center text-on-surface-variant';
+            const fd = new FormData(rxForm);
+            fd.append('action', rxEditingId ? 'update_prescription' : 'add_prescription');
+            if (rxEditingId) fd.append('id', rxEditingId);
+            const res = await fetch(RX_API, { method: 'POST', body: fd }).then(r => r.json()).catch(() => ({ success: false, message: 'Network error' }));
+            if (res.success) { location.reload(); }
+            else { msg.textContent = ''; window.showError(res.message || 'Failed to save'); }
         });
-
-        // Close modal when clicking outside
-        document.getElementById('new-prescription-modal').addEventListener('click', function(event) {
-            if (event.target === this) {
-                closeNewPrescriptionModal();
-            }
-        });
-    </script>
+    }
+    async function rxDelete(id) {
+        if (!(await window.confirmAction('Delete this prescription?'))) return;
+        const fd = new FormData();
+        fd.append('action', 'delete_prescription'); fd.append('id', id);
+        const res = await fetch(RX_API, { method: 'POST', body: fd }).then(r => r.json()).catch(() => ({ success: false }));
+        if (res.success) location.reload(); else showError(res.message || 'Delete failed');
+    }
+    rxLoadStats(); rxLoadPatients(); rxLoadDoctors();
+</script>
 </body></html>

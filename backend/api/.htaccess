@@ -1,0 +1,10 @@
+# API handlers are fetched by the frontend over HTTP — re-allow access here,
+# overriding the deny-all in backend/.htaccess.
+
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>

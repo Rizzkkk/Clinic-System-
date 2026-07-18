@@ -1,5 +1,22 @@
 # CHANGELOG - Walk-in Appointment Registration System
 
+## 2026-07-18 — Multiple tests per laboratory order
+
+### Added
+- **Grouped lab orders** - the Add Laboratory Result form now records several tests in one order.
+  Each test row has its own **result value, reference range, and Normal/Abnormal flag**; Patient,
+  Ordering Doctor, Test Date, and Remarks are shared across the order. Add/remove test rows on the form.
+- **`laboratory_result_items`** child table (migration 009): one lab order (`laboratory_results`)
+  -> many tests. The migration backfills one item per existing order, so old data displays
+  unchanged. The parent's per-test columns (`testType`, `results`, `referenceRange`, `abnormalFlag`)
+  are retained but unused for new orders (non-destructive, reversible).
+
+### Changed
+- **`backend/api/laboratory_results.php`**: `add_result`/`update_result` now save the order and its
+  tests in a single transaction (update replaces the order's tests); `get_stats` counts individual
+  tests; the lab **PDF report** and the results table list every test in the order (flag shows
+  Abnormal if any test is abnormal).
+
 ## 2026-07-14 — Docs: refreshed backend/ and frontend/ READMEs
 
 ### Changed

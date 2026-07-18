@@ -1,160 +1,13 @@
 <?php
-session_start();
-require_once __DIR__ . '/db.php';
-
-// Check if user is logged in
-if (!isset($_SESSION['user_id'])) {
-    header('Location: index.php');
-    exit;
+require_once __DIR__ . '/backend/auth/bootstrap.php';
+// Backward-compat: this page's data API now lives in backend/api/appointments.php.
+if (!empty($_GET['api']) || ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']))) {
+    require __DIR__ . '/backend/api/appointments.php';
 }
-
-// Handle AJAX requests for appointment operations
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    header('Content-Type: application/json');
-    
-    $action = $_POST['action'];
-    
-    if ($action === 'add_appointment') {
-        // Validate required fields
-        $patientId = isset($_POST['patientId']) ? (int)$_POST['patientId'] : 0;
-        $doctorId = isset($_POST['doctorId']) ? (int)$_POST['doctorId'] : 0;
-        $appointmentDate = isset($_POST['appointmentDate']) ? $_POST['appointmentDate'] : '';
-        $appointmentTime = isset($_POST['appointmentTime']) ? $_POST['appointmentTime'] : '';
-        $reason = isset($_POST['reason']) ? $_POST['reason'] : '';
-        $notes = isset($_POST['notes']) ? $_POST['notes'] : '';
-        
-        // Check required fields
-        if (!$patientId || !$doctorId || !$appointmentDate || !$appointmentTime) {
-            echo json_encode(['success' => false, 'message' => 'Please select a patient, doctor, date, and time.']);
-            exit;
-        }
-        
-        $stmt = $conn->prepare('
-            INSERT INTO appointments (patientId, doctorId, appointmentDate, appointmentTime, reason, notes) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        ');
-        
-        if (!$stmt) {
-            echo json_encode(['success' => false, 'message' => 'Database error: ' . $conn->error]);
-            exit;
-        }
-        
-        $stmt->bind_param('iissss',
-            $patientId,
-            $doctorId,
-            $appointmentDate,
-            $appointmentTime,
-            $reason,
-            $notes
-        );
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true, 'message' => 'Appointment scheduled successfully']);
-        } else {
-            echo json_encode(['success' => false, 'message' => 'Error: ' . $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    } elseif ($action === 'delete_appointment') {
-        $id = (int)$_POST['id'];
-        $stmt = $conn->prepare('DELETE FROM appointments WHERE id = ?');
-        $stmt->bind_param('i', $id);
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'message' => $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    } elseif ($action === 'update_status') {
-        $id = (int)$_POST['id'];
-        $status = $_POST['status'];
-        $stmt = $conn->prepare('UPDATE appointments SET status = ? WHERE id = ?');
-        $stmt->bind_param('si', $status, $id);
-        
-        if ($stmt->execute()) {
-            echo json_encode(['success' => true]);
-        } else {
-            echo json_encode(['success' => false, 'message' => $stmt->error]);
-        }
-        $stmt->close();
-        exit;
-    }
-}
-
-// Get all appointments for API response
-if (isset($_GET['api']) && $_GET['api'] === 'get_appointments') {
-    header('Content-Type: application/json');
-    
-    $result = $conn->query('
-        SELECT a.id, a.patientId, a.doctorId, a.appointmentDate, a.appointmentTime, a.reason, a.status, a.notes,
-               p.firstName as patientFirstName, p.lastName as patientLastName,
-               d.firstName as doctorFirstName, d.lastName as doctorLastName
-        FROM appointments a 
-        JOIN patients p ON a.patientId = p.id 
-        JOIN doctors d ON a.doctorId = d.id 
-        ORDER BY a.appointmentDate DESC
-    ');
-    $appointments = [];
-    
-    while ($row = $result->fetch_assoc()) {
-        $appointments[] = $row;
-    }
-    
-    echo json_encode($appointments);
-    exit;
-}
-
-// Get patient list for dropdown
-if (isset($_GET['api']) && $_GET['api'] === 'get_patients') {
-    header('Content-Type: application/json');
-    $result = $conn->query('SELECT id, firstName, lastName, dateOfBirth, gender, bloodType, phone, email, address, emergencyContact, emergencyPhone, status FROM patients ORDER BY lastName, firstName');
-    $patients = [];
-    while ($row = $result->fetch_assoc()) {
-        $patients[] = $row;
-    }
-    echo json_encode($patients);
-    exit;
-}
-
-// Get doctor list for dropdown
-if (isset($_GET['api']) && $_GET['api'] === 'get_doctors') {
-    header('Content-Type: application/json');
-    $result = $conn->query('SELECT id, firstName, lastName FROM doctors ORDER BY lastName, firstName');
-    $doctors = [];
-    while ($row = $result->fetch_assoc()) {
-        $doctors[] = $row;
-    }
-    echo json_encode($doctors);
-    exit;
-}
-
-// Get statistics
-if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
-    header('Content-Type: application/json');
-    
-    $today = date('Y-m-d');
-    $total = $conn->query('SELECT COUNT(*) as count FROM appointments')->fetch_assoc()['count'];
-    $scheduled = $conn->query("SELECT COUNT(*) as count FROM appointments WHERE status = 'Scheduled'")->fetch_assoc()['count'];
-    $completed = $conn->query("SELECT COUNT(*) as count FROM appointments WHERE status = 'Completed'")->fetch_assoc()['count'];
-    $cancelled = $conn->query("SELECT COUNT(*) as count FROM appointments WHERE status = 'Cancelled'")->fetch_assoc()['count'];
-    $todayAppointments = $conn->query("SELECT COUNT(*) as count FROM appointments WHERE DATE(appointmentDate) = '$today'")->fetch_assoc()['count'];
-    $pendingCheckins = $conn->query("SELECT COUNT(*) as count FROM appointments WHERE status = 'Scheduled' AND DATE(appointmentDate) = '$today'")->fetch_assoc()['count'];
-    
-    $todayPercentage = $total > 0 ? round(($todayAppointments / $total) * 100) : 0;
-    
-    echo json_encode([
-        'total' => $total,
-        'scheduled' => $scheduled,
-        'completed' => $completed,
-        'cancelled' => $cancelled,
-        'todayAppointments' => $todayAppointments,
-        'pendingCheckins' => $pendingCheckins,
-        'todayPercentage' => $todayPercentage
-    ]);
-    exit;
-}
+// Guard the page load itself so the HTML shell doesn't render for a role without access.
+require_once __DIR__ . '/backend/auth/rbac.php';
+require_module_access('appointments');
+$canWriteAppt = can_access('appointments', 'write');
 ?>
 <!DOCTYPE html>
 
@@ -268,69 +121,7 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
 </head>
 <body class="bg-background text-on-background font-body-md overflow-x-hidden">
 <!-- SideNavBar (Shared Component) -->
-<aside class="docked h-screen w-sidebar fixed left-0 top-0 flex flex-col h-full py-6 z-50" style="background-color: #00685D;">
-<div class="px-6 mb-8">
-<h1 class="text-headline-md font-headline-md font-bold text-surface-container-lowest">ASCLEPIUS Medical &<br> Diagnostic Group Inc.</h1>
-<p class="text-label-bold text-surface-variant/60 font-label-bold">Laboratory Information System</p>
-</div>
-<nav class="flex-1 space-y-1">
-
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dashboard.php">
-<span class="material-symbols-outlined">dashboard</span>
-<span class="font-label-bold text-label-bold">Dashboard</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Patient.php">
-<span class="material-symbols-outlined">group</span>
-<span class="font-label-bold text-label-bold">Patients</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Doctor.php">
-<span class="material-symbols-outlined">biotech</span>
-<span class="font-label-bold text-label-bold">Doctors</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 bg-surface-variant/20 text-surface-bright rounded-lg mx-2 my-1 opacity-100 transition-colors" href="#">
-<span class="material-symbols-outlined">receipt_long</span>
-<span class="font-label-bold text-label-bold">Appointment</span>
-</a>
-
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Medical Records.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Medical Records</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Laboratory Result.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Laboratory Results</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Agency Referral.php">
-<span class="material-symbols-outlined">science</span>
-<span class="font-label-bold text-label-bold">Agency Referral</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Prescription.php">
-<span class="material-symbols-outlined">description</span>
-<span class="font-label-bold text-label-bold">Prescription</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Biling.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Billing</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Dental.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Dental</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="X-ray.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">X-Ray</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-surface-variant/70 hover:text-surface-bright mx-2 my-1 opacity-70 hover:bg-surface-variant/10 transition-colors" href="Psych.php">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-bold text-label-bold">Psych</span>
-</a>
-<a class="flex items-center gap-3 px-3 py-2 text-error/80 hover:text-error hover:bg-error/10 mx-2 my-1 opacity-70 transition-colors" href="index.php" onclick="localStorage.clear();">
-<span class="material-symbols-outlined">logout</span>
-<span class="font-label-bold text-label-bold">Logout</span>
-</a>
-</nav>
-
-</aside>
+<?php $active = 'appointments'; require __DIR__ . '/frontend/partials/sidebar.php'; ?>
 <!-- TopNavBar (Shared Component) -->
 <header class="ml-sidebar h-16 sticky top-0 bg-surface dark:bg-surface-dim border-b border-outline-variant/30 flex justify-between items-center px-gutter z-40">
 <div class="flex items-center">
@@ -435,6 +226,7 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
 </section>
 <!-- Sidebar Contextual Area -->
 <aside class="col-span-12 lg:col-span-3 flex flex-col gap-gutter">
+<?php if ($canWriteAppt): ?>
 <!-- Quick Booking Card -->
 <div class="bg-surface-container-lowest border border-outline-variant/30 rounded-xl p-6 mb-gutter hover:shadow-md transition-shadow duration-300">
 <div class="flex items-center gap-2 mb-4">
@@ -459,6 +251,7 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
         Book Online
     </button>
 </div>
+<?php endif; ?>
 <!-- Daily Pipeline View -->
 
 </aside>
@@ -548,6 +341,9 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
 
         let walkInPatientsCache = [];
         let currentBookingMode = 'walkin';
+        const CAN_WRITE_APPT = <?php echo $canWriteAppt ? 'true' : 'false'; ?>;
+        let editingAppointmentId = null;
+        const APPTS = {};
 
         function filterPatientList(query) {
             const normalizedQuery = String(query || '').toLowerCase().trim();
@@ -617,6 +413,7 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
                     </td>
                     <td class="px-6 py-4 text-right text-body-sm text-on-surface-variant">
                         <div class="flex gap-2 justify-end">
+                            ${CAN_WRITE_APPT ? `<button type="button" class="inline-flex items-center justify-center rounded-lg bg-surface-container px-3 py-2 text-[12px] font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors" data-edit-appointment-id="${safeAppointmentId}">Edit</button>` : ''}
                             <button type="button" class="inline-flex items-center justify-center rounded-lg bg-primary/10 px-3 py-2 text-[12px] font-semibold text-primary hover:bg-primary/20 transition-colors" data-remove-appointment-id="${safeAppointmentId}" data-patient-name="${safePatientName}">
                                 Finish Patient
                             </button>
@@ -627,6 +424,21 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
                     </td>
                 </tr>
             `;
+        }
+
+        async function editAppointment(id) {
+            const a = APPTS[String(id)];
+            if (!a) return;
+            editingAppointmentId = id;
+            await openBookingModal('walkin');
+            if (walkInPatient) walkInPatient.value = String(a.patientId || '');
+            if (walkInDoctor) walkInDoctor.value = String(a.doctorId || '');
+            if (walkInDate) walkInDate.value = (a.appointmentDate || '').slice(0, 10);
+            if (walkInTime) walkInTime.value = a.appointmentTime || '';
+            if (walkInReason) walkInReason.value = a.reason || '';
+            if (walkInNotes) walkInNotes.value = a.notes || '';
+            const title = document.getElementById('walkInModalTitle'); if (title) title.textContent = 'Edit Appointment';
+            if (saveBookingButton) saveBookingButton.textContent = 'Update Appointment';
         }
 
         async function removeAppointment(appointmentId, patientName) {
@@ -666,11 +478,11 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
                     await loadAppointmentTables();
                     await loadMetrics();
                 } else {
-                    alert(result.message || 'Unable to remove appointment.');
+                    showError(result.message || 'Unable to remove appointment.');
                 }
             } catch (error) {
                 console.error('Failed to remove appointment:', error);
-                alert('Unable to remove appointment. Please check the console for details.');
+                showError('Unable to remove appointment. Please check the console for details.');
             }
         }
 
@@ -710,18 +522,23 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
                     await loadAppointmentTables();
                     await loadMetrics();
                 } else {
-                    alert(result.message || 'Unable to remove appointment.');
+                    showError(result.message || 'Unable to remove appointment.');
                 }
             } catch (error) {
                 console.error('Failed to delete appointment:', error);
-                alert('Unable to remove appointment. Please check the console for details.');
+                showError('Unable to remove appointment. Please check the console for details.');
             }
         }
 
         function handleAppointmentTableClick(event) {
+            const editButton = event.target.closest('[data-edit-appointment-id]');
+            if (editButton) {
+                editAppointment(editButton.getAttribute('data-edit-appointment-id'));
+                return;
+            }
             const finishButton = event.target.closest('[data-remove-appointment-id]');
             const removeButton = event.target.closest('[data-delete-appointment-id]');
-            
+
             if (finishButton) {
                 removeAppointment(
                     finishButton.getAttribute('data-remove-appointment-id'),
@@ -743,6 +560,8 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
         function closeWalkInModalFn() {
             walkInModal.classList.add('hidden');
             walkInModal.classList.remove('flex');
+            // Leave edit mode so the next open (add) is a fresh booking.
+            editingAppointmentId = null;
         }
 
         function setDefaultWalkInDateTime() {
@@ -819,6 +638,7 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
 
                 console.log('All appointments:', appointments);
                 
+                appointments.forEach((a) => { APPTS[String(a.id)] = a; });
                 const onlineAppointments = appointments.filter((appointment) => !isWalkInAppointment(appointment));
                 const walkInAppointments = appointments.filter((appointment) => isWalkInAppointment(appointment));
 
@@ -1069,38 +889,42 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
 
                 // Validate required fields
                 if (!walkInPatient.value) {
-                    alert('Please select a patient.');
+                    showError('Please select a patient.');
                     walkInPatient.focus();
                     return;
                 }
                 if (!walkInDoctor.value) {
-                    alert('Please select a doctor.');
+                    showError('Please select a doctor.');
                     walkInDoctor.focus();
                     return;
                 }
                 if (!walkInDate.value) {
-                    alert('Please select a date.');
+                    showError('Please select a date.');
                     walkInDate.focus();
                     return;
                 }
                 if (!walkInTime.value) {
-                    alert('Please select a time.');
+                    showError('Please select a time.');
                     walkInTime.focus();
                     return;
                 }
 
                 const formData = new FormData();
-                formData.append('action', 'add_appointment');
+                formData.append('action', editingAppointmentId ? 'update_appointment' : 'add_appointment');
+                if (editingAppointmentId) formData.append('id', editingAppointmentId);
                 formData.append('patientId', walkInPatient.value);
                 formData.append('doctorId', walkInDoctor.value);
                 formData.append('appointmentDate', walkInDate.value);
                 formData.append('appointmentTime', walkInTime.value);
                 const enteredReason = walkInReason.value.trim();
-                const reason = currentBookingMode === 'online'
-                    ? (enteredReason && enteredReason.toLowerCase().includes('online booking') ? enteredReason : `Online Booking${enteredReason ? ` - ${enteredReason}` : ''}`)
-                    : (enteredReason && enteredReason.toLowerCase().includes('walk-in') ? enteredReason : `Walk-in${enteredReason ? ` - ${enteredReason}` : ''}`);
+                const reason = editingAppointmentId
+                    ? enteredReason
+                    : (currentBookingMode === 'online'
+                        ? (enteredReason && enteredReason.toLowerCase().includes('online booking') ? enteredReason : `Online Booking${enteredReason ? ` - ${enteredReason}` : ''}`)
+                        : (enteredReason && enteredReason.toLowerCase().includes('walk-in') ? enteredReason : `Walk-in${enteredReason ? ` - ${enteredReason}` : ''}`));
                 formData.append('reason', reason);
                 formData.append('notes', walkInNotes.value || '');
+                if (editingAppointmentId) { const ap = APPTS[String(editingAppointmentId)]; formData.append('status', (ap && ap.status) ? ap.status : 'Scheduled'); }
 
                 try {
                     const response = await fetch('Appointment.php', {
@@ -1136,11 +960,11 @@ if (isset($_GET['api']) && $_GET['api'] === 'get_stats') {
                         }, 500);
                     } else {
                         console.error('Failed to save:', result.message);
-                        alert(result.message || 'Unable to save walk-in appointment.');
+                        showError(result.message || 'Unable to save walk-in appointment.');
                     }
                 } catch (error) {
                     console.error('Failed to save walk-in appointment:', error);
-                    alert('Unable to save walk-in appointment. Please check the console for details.');
+                    showError('Unable to save walk-in appointment. Please check the console for details.');
                 }
             });
         }

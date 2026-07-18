@@ -1,0 +1,10 @@
+{
+    "name": "asclepius/clinic-system",
+    "description": "Asclepius clinic management system (server-rendered PHP + MySQL).",
+    "type": "project",
+    "require": {
+        "php": ">=8.1",
+        "ext-mysqli": "*",
+        "ext-fileinfo": "*"
+    }
+}
