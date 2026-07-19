@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
       display: flex;
       justify-content: center;
       align-items: center;
-      overflow: hidden;
+      overflow-y: auto;
     }
 
     .container{
@@ -355,10 +355,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 
       
       <div class="form-container">
-        <?php if ($loginError !== ''): ?>
-          <div class="message error"><?php echo htmlspecialchars($loginError, ENT_QUOTES, 'UTF-8'); ?></div>
-        <?php endif; ?>
-
         <form method="post" action="" autocomplete="on">
           <div class="input-group">
             <label for="login-email">Username</label>
@@ -418,5 +414,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
     }
   </script>
 
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <?php if ($loginError !== ''): ?>
+  <script>Swal.fire({ icon: 'error', title: 'Something went wrong', text: <?php echo json_encode($loginError); ?>, confirmButtonColor: '#00685d' });</script>
+  <?php endif; ?>
 </body>
 </html>

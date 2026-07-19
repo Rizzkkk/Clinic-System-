@@ -20,8 +20,8 @@ manual page refresh (i.e. it is in the database), not just shown on screen.
 | 1.2 | Log in with a wrong password | Rejected, no session | |
 | 1.3 | Open a module URL directly while logged out | Redirected to `index.php` | |
 | 1.4 | Log out (sidebar) | Session cleared; back to login | |
-| 1.5 | Register a new account (`register.php`) | Created as **admin** (no role picker yet) | |
-| 1.6 | Password reset (`ForgotPassword.php`) end-to-end | Request → link (dev: error log) → set new password → log in with it | |
+| 1.5 | Register a new account (`register.php`) | Created as **pending** (admin assigns role); name/email validated; any error shows as a SweetAlert overlay with the CREATE ACCOUNT button still reachable | |
+| 1.6 | Password reset (`ForgotPassword.php`) end-to-end | Request → link (dev: error log) → set new password → log in with it; messages show as a SweetAlert overlay | |
 
 ## 2. RBAC — sidebar visibility (the "only see what I can use" test)
 
@@ -84,6 +84,22 @@ from the dropdown** (where applicable), submit, and confirm it persists after re
 | 6.2 | Load every page as admin | HTTP 200, **no PHP warnings** in the server log | |
 | 6.3 | Sidebar is identical across all pages (shared partial) | Same links/order everywhere for a given role | |
 | 6.4 | Prescription "Quick Prescribe"/fake modal is gone | Only the real form remains | |
+
+## 7. Input validation & error display (registration forms)
+
+Name fields accept letters + spaces, hyphen, apostrophe, and period (incl. accented letters
+like Peña); they must reject digits and other symbols. Email must be well-formed. Validation is
+enforced **both** client-side (browser bubble) and server-side (rejected before any DB write).
+
+| # | Test | Expected | Result |
+|---|------|----------|:------:|
+| 7.1 | Type `John123` or `@dmin` into any name field and submit | Blocked client-side with a validation bubble | |
+| 7.2 | Bypass the client (curl/devtools) and POST a digit-containing name to the module API | `400` JSON `{success:false}`, no row inserted | |
+| 7.3 | Valid names with punctuation/accents (`O'Brien`, `Mary-Jane`, `Peña`, `Cruz Jr.`) | Accepted and persist | |
+| 7.4 | Quick patient registration `Last, First Middle` (with comma) | Accepted (comma allowed on that field only) | |
+| 7.5 | Malformed email in any registration form | Rejected client + server | |
+| 7.6 | `register.php`: submit with mismatched passwords / bad input | Error shows as a **SweetAlert overlay**; **CREATE ACCOUNT button stays visible/clickable**; entered values retained; **no refresh needed** | |
+| 7.7 | `index.php` bad login / `ForgotPassword.php` request | Message shows as a SweetAlert overlay (no layout shift) | |
 
 ---
 

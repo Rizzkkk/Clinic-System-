@@ -14,6 +14,7 @@
 
 require_once __DIR__ . '/../auth/bootstrap.php';
 require_once __DIR__ . '/../lib/response.php';
+require_once __DIR__ . '/../lib/validation.php';
 require_once __DIR__ . '/../auth/rbac.php';
 require_module_access('patients');
 
@@ -37,6 +38,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $allergies          = $_POST['allergies']          ?? '';
         $insurance_provider = $_POST['insurance_provider'] ?? '';
         $insurance_number   = $_POST['insurance_number']   ?? '';
+
+        if ($firstName === '' || $lastName === '') {
+            json_fail('First name and last name are required.');
+        }
+        if ($nameError = first_invalid_name(['First name' => $firstName, 'Last name' => $lastName, 'Middle name' => $middleName, 'Emergency contact name' => $emergencyContact])) {
+            json_fail($nameError);
+        }
+        if ($email !== '' && !is_valid_email($email)) {
+            json_fail('Please enter a valid email address.');
+        }
 
         $stmt = $conn->prepare('
             INSERT INTO patients (firstName, lastName, middleName, dateOfBirth, gender, bloodType, phone, email, address, emergencyContact, emergencyPhone, medicalHistory, allergies, insurance_provider, insurance_number)
@@ -75,6 +86,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $insurance_number   = $_POST['insurance_number']   ?? '';
         if (!$id || $firstName === '' || $lastName === '') {
             json_fail('The patient record, first name, and last name are required.');
+        }
+        if ($nameError = first_invalid_name(['First name' => $firstName, 'Last name' => $lastName, 'Middle name' => $middleName, 'Emergency contact name' => $emergencyContact])) {
+            json_fail($nameError);
+        }
+        if ($email !== '' && !is_valid_email($email)) {
+            json_fail('Please enter a valid email address.');
         }
         $stmt = $conn->prepare('UPDATE patients SET firstName=?, lastName=?, middleName=?, dateOfBirth=?, gender=?, bloodType=?, phone=?, email=?, address=?, emergencyContact=?, emergencyPhone=?, medicalHistory=?, allergies=?, insurance_provider=?, insurance_number=? WHERE id=?');
         $stmt->bind_param(

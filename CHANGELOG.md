@@ -1,5 +1,31 @@
 # CHANGELOG - Walk-in Appointment Registration System
 
+## 2026-07-19 — Registration input validation + auth error display
+
+### Added
+- **`backend/lib/validation.php`** - shared validators: `is_valid_name()` (letters incl.
+  accented Latin, spaces, hyphen, apostrophe, period; rejects digits and other symbols),
+  `is_valid_email()` (`FILTER_VALIDATE_EMAIL`), and a `first_invalid_name()` convenience helper.
+- **Client-side name validation** - HTML5 `pattern` + `title` on every name field across the
+  registration forms (`register.php` full name; `Patient.php` quick + full patient; `Doctor.php`;
+  `Receptionists.php` / `Cashiers.php` / `Lab Technicians.php` first/last/middle). The quick
+  patient field also allows a comma for the "Last, First Middle" format. `register.php` inputs
+  gained the missing `required` attributes.
+
+### Changed
+- **Server-side validation** now rejects malformed names and emails before any DB write in
+  `register.php` and all five registration APIs (`patients`, `doctors`, `receptionists`,
+  `cashiers`, `lab_technicians`), on both add and update. Address, phone, IDs, and notes are
+  left unrestricted (they legitimately contain digits/symbols). `add_patient` also gained the
+  first/last-name required check it was missing.
+- **Auth-page error display** - `register.php`, `index.php`, and `ForgotPassword.php` now show
+  errors/success as a **SweetAlert2** overlay instead of an inline `.message` box, and their
+  `body` uses `overflow-y:auto`. Fixes the QA bug where a validation message pushed the submit
+  button below a non-scrollable viewport, forcing a page refresh.
+
+### Notes
+- Password minimum length on `register.php` (security S-9) remains deferred; out of scope here.
+
 ## 2026-07-18 — Multiple tests per laboratory order
 
 ### Added

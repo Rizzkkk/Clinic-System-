@@ -296,16 +296,16 @@ $canWriteDoctor = can_access('doctors', 'write');
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div class="space-y-1.5">
 <label class="text-label-bold text-on-surface-variant block">First Name *</label>
-<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="firstName" required/>
+<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="firstName" required pattern="[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ '.-]*" title="Letters, spaces, hyphens, apostrophes, and periods only."/>
 </div>
 <div class="space-y-1.5">
 <label class="text-label-bold text-on-surface-variant block">Last Name *</label>
-<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="lastName" required/>
+<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="lastName" required pattern="[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ '.-]*" title="Letters, spaces, hyphens, apostrophes, and periods only."/>
 </div>
 </div>
 <div class="space-y-1.5">
 <label class="text-label-bold text-on-surface-variant block">Middle Name</label>
-<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="middleName"/>
+<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="middleName" pattern="[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ '.-]*" title="Letters, spaces, hyphens, apostrophes, and periods only."/>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div class="space-y-1.5">

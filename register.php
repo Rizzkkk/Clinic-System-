@@ -3,6 +3,7 @@ require_once __DIR__ . '/backend/lib/session.php';
 asclepius_start_session();
 
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/backend/lib/validation.php';
 
 $registerError = '';
 $registerSuccess = '';
@@ -15,6 +16,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_submit'])) {
 
   if ($fullName === '' || $email === '' || $password === '' || $confirmPassword === '') {
     $registerError = 'Please fill in all fields before creating an account.';
+  } elseif (!is_valid_name($fullName)) {
+    $registerError = 'Please enter a valid full name (letters, spaces, hyphens, apostrophes, and periods only).';
+  } elseif (!is_valid_email($email)) {
+    $registerError = 'Please enter a valid email address.';
   } elseif ($password !== $confirmPassword) {
     $registerError = 'Passwords do not match. Please confirm your password.';
   } else {
@@ -70,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_submit'])) {
       display: flex;
       justify-content: center;
       align-items: center;
-      overflow: hidden;
+      overflow-y: auto;
     }
 
     .container{
@@ -324,33 +329,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_submit'])) {
       </div>
 
       <div class="form-container">
-        <?php if ($registerError !== ''): ?>
-          <div class="message error"><?php echo htmlspecialchars($registerError, ENT_QUOTES, 'UTF-8'); ?></div>
-        <?php endif; ?>
-
-        <?php if ($registerSuccess !== ''): ?>
-          <div class="message success"><?php echo htmlspecialchars($registerSuccess, ENT_QUOTES, 'UTF-8'); ?></div>
-        <?php endif; ?>
-
         <form method="post" action="" autocomplete="on">
           <div class="input-group">
             <label for="register-fullname">Full Name</label>
-            <input id="register-fullname" name="full_name" type="text" placeholder="John Doe" value="<?php echo htmlspecialchars($_POST['full_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+            <input id="register-fullname" name="full_name" type="text" placeholder="John Doe" required pattern="[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ '.-]*" title="Letters, spaces, hyphens, apostrophes, and periods only." value="<?php echo htmlspecialchars($_POST['full_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
           </div>
 
           <div class="input-group">
             <label for="register-email">Email</label>
-            <input id="register-email" name="email" type="email" placeholder="you@example.com" value="<?php echo htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+            <input id="register-email" name="email" type="email" placeholder="you@example.com" required value="<?php echo htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
           </div>
 
           <div class="input-group">
             <label for="register-password">Password</label>
-            <input id="register-password" name="password" type="password" placeholder="Create a password">
+            <input id="register-password" name="password" type="password" placeholder="Create a password" required>
           </div>
 
           <div class="input-group">
             <label for="register-confirm-password">Confirm Password</label>
-            <input id="register-confirm-password" name="confirm_password" type="password" placeholder="Confirm password">
+            <input id="register-confirm-password" name="confirm_password" type="password" placeholder="Confirm password" required>
           </div>
 
           <button class="create-btn" type="submit" name="register_submit" value="1">CREATE ACCOUNT</button>
@@ -370,6 +367,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_submit'])) {
 
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <?php if ($registerError !== ''): ?>
+  <script>Swal.fire({ icon: 'error', title: 'Something went wrong', text: <?php echo json_encode($registerError); ?>, confirmButtonColor: '#00685d' });</script>
+  <?php endif; ?>
+  <?php if ($registerSuccess !== ''): ?>
+  <script>Swal.fire({ icon: 'success', title: 'Success', text: <?php echo json_encode($registerSuccess); ?>, confirmButtonColor: '#00685d' });</script>
+  <?php endif; ?>
 </body>
 </html>
 

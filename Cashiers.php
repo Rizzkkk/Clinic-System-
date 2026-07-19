@@ -52,9 +52,9 @@ require_module_access('cashiers');
     <div class="bg-white rounded-xl border border-[#dfe4e1] p-6 mb-8">
         <h3 class="font-bold mb-4">Add Cashier</h3>
         <form id="staffForm" class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <input name="firstName" class="input" placeholder="First name *" required>
-            <input name="lastName" class="input" placeholder="Last name *" required>
-            <input name="middleName" class="input" placeholder="Middle name">
+            <input name="firstName" class="input" placeholder="First name *" required pattern="[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ '.-]*" title="Letters, spaces, hyphens, apostrophes, and periods only.">
+            <input name="lastName" class="input" placeholder="Last name *" required pattern="[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ '.-]*" title="Letters, spaces, hyphens, apostrophes, and periods only.">
+            <input name="middleName" class="input" placeholder="Middle name" pattern="[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ '.-]*" title="Letters, spaces, hyphens, apostrophes, and periods only.">
             <input name="employeeId" class="input" placeholder="Employee ID *" required>
             <input name="counterNo" class="input" placeholder="Counter No.">
             <select name="shift" class="input"><option value="">Shift</option><option value="morning">Morning</option><option value="evening">Evening</option></select>

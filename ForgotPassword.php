@@ -107,7 +107,7 @@ $e = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *{ margin:0; padding:0; box-sizing:border-box; font-family:'Poppins', sans-serif; }
-    body{ background:#f4f6fb; min-height:100vh; display:flex; justify-content:center; align-items:center; overflow:hidden; }
+    body{ background:#f4f6fb; min-height:100vh; display:flex; justify-content:center; align-items:center; overflow-y:auto; }
     .container{ width:100vw; max-width:none; min-height:100vh; background:#fff; position:relative; overflow:hidden; display:flex; }
     .left-section{ width:50%; padding:50px 60px; position:relative; z-index:2; }
     .logo{ width:110px; margin-bottom:20px; }
@@ -155,8 +155,7 @@ $e = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
       </div>
 
       <div class="form-container">
-        <?php if ($error !== ''): ?><div class="message error"><?php echo $e($error); ?></div><?php endif; ?>
-        <?php if ($notice !== ''): ?><div class="message success"><?php echo $e($notice); ?></div><?php endif; ?>
+        <?php /* Errors and notices are surfaced via SweetAlert2 near </body>. */ ?>
 
         <?php if ($stage === 'request'): ?>
           <div class="step-title">Forgot Password</div>
@@ -203,5 +202,12 @@ $e = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
       <img src="frontend/assets/img/Doctors.webp" alt="Doctor">
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <?php if ($error !== ''): ?>
+  <script>Swal.fire({ icon: 'error', title: 'Something went wrong', text: <?php echo json_encode($error); ?>, confirmButtonColor: '#00685d' });</script>
+  <?php endif; ?>
+  <?php if ($notice !== ''): ?>
+  <script>Swal.fire({ icon: 'success', title: 'Success', text: <?php echo json_encode($notice); ?>, confirmButtonColor: '#00685d' });</script>
+  <?php endif; ?>
 </body>
 </html>

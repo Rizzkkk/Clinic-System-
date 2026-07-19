@@ -9,6 +9,7 @@
 
 require_once __DIR__ . '/../auth/bootstrap.php';
 require_once __DIR__ . '/../lib/response.php';
+require_once __DIR__ . '/../lib/validation.php';
 require_once __DIR__ . '/../auth/rbac.php';
 require_module_access('lab_technicians');
 
@@ -30,6 +31,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         if ($firstName === '' || $lastName === '' || $employeeId === '') {
             json_fail('First name, last name, and employee ID are required.');
+        }
+        if ($nameError = first_invalid_name(['First name' => $firstName, 'Last name' => $lastName, 'Middle name' => $middleName])) {
+            json_fail($nameError);
+        }
+        if ($email !== '' && !is_valid_email($email)) {
+            json_fail('Please enter a valid email address.');
         }
 
         $stmt = $conn->prepare('
@@ -59,6 +66,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $licenseNumber = $_POST['licenseNumber'] ?? '';
         if (!$id || $firstName === '' || $lastName === '' || $employeeId === '') {
             json_fail('Record, first name, last name, and employee ID are required.');
+        }
+        if ($nameError = first_invalid_name(['First name' => $firstName, 'Last name' => $lastName, 'Middle name' => $middleName])) {
+            json_fail($nameError);
+        }
+        if ($email !== '' && !is_valid_email($email)) {
+            json_fail('Please enter a valid email address.');
         }
         $stmt = $conn->prepare('UPDATE lab_technicians SET firstName=?, lastName=?, middleName=?, employeeId=?, shift=?, phone=?, email=?, dob=?, section=?, licenseNumber=? WHERE id=?');
         $stmt->bind_param('ssssssssssi', $firstName, $lastName, $middleName, $employeeId, $shift, $phone, $email, $dob, $section, $licenseNumber, $id);

@@ -9,6 +9,7 @@
 
 require_once __DIR__ . '/../auth/bootstrap.php';
 require_once __DIR__ . '/../lib/response.php';
+require_once __DIR__ . '/../lib/validation.php';
 require_once __DIR__ . '/../auth/rbac.php';
 require_module_access('doctors');
 
@@ -57,6 +58,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $education     = $_POST['education']      ?? '';
         $notes         = $_POST['notes']         ?? '';
 
+        if ($firstName === '' || $lastName === '') {
+            json_fail('First name and last name are required.');
+        }
+        if ($nameError = first_invalid_name(['First name' => $firstName, 'Last name' => $lastName, 'Middle name' => $middleName])) {
+            json_fail($nameError);
+        }
+        if ($email !== null && !is_valid_email($email)) {
+            json_fail('Please enter a valid email address.');
+        }
+
         $signaturePath = null;
         if (isset($_FILES['signature']) && $_FILES['signature']['error'] !== UPLOAD_ERR_NO_FILE) {
             $signaturePath = doctor_store_signature($_FILES['signature']);
@@ -99,6 +110,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $notes         = $_POST['notes']         ?? '';
         if (!$id || $firstName === '' || $lastName === '') {
             json_fail('The doctor record, first name, and last name are required.');
+        }
+        if ($nameError = first_invalid_name(['First name' => $firstName, 'Last name' => $lastName, 'Middle name' => $middleName])) {
+            json_fail($nameError);
+        }
+        if ($email !== null && !is_valid_email($email)) {
+            json_fail('Please enter a valid email address.');
         }
 
         // Optional signature replacement.

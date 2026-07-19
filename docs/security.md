@@ -9,8 +9,8 @@ with remediation.
 - Session-based. `index.php` verifies email + password with `password_verify()` against the
   `password_hash` in `users`, then `session_regenerate_id(true)` and stores `user_id` /
   `user_name` in `$_SESSION`.
-- Registration (`register.php`) hashes with `password_hash($pw, PASSWORD_DEFAULT)` and
-  rejects duplicate emails.
+- Registration (`register.php`) hashes with `password_hash($pw, PASSWORD_DEFAULT)`, rejects
+  duplicate emails, and validates the full name and email format (see S-13).
 - Every module page redirects to `index.php` when `$_SESSION['user_id']` is unset.
 
 This part is sound. The gaps below are around the *rest* of the stack.
@@ -60,6 +60,7 @@ the rest are tracked here.
 | S-10 | done | Session cookies now set `HttpOnly` + `SameSite=Lax` + `Secure`-on-HTTPS via `backend/lib/session.php`. | session | Done (idle timeout still optional). |
 | S-11 | done | Error display is now env-controlled: `config.php` forces `display_errors=0` + `log_errors=1` when `APP_ENV=production` (the default). Dev sets `APP_ENV=development`. | config.php | Done. |
 | S-12 | done | **RBAC enforced in the UI + hardening.** New `can_access($module,$mode)` boolean drives a shared role-filtered sidebar (`frontend/partials/sidebar.php`) and hides in-page write controls, so users only see what they can use. Added page-load `require_module_access` to `Patient`/`Doctor`/`Appointment` (were API-only, so the shell rendered for any role). `current_role()` now defaults to `''` (no access) instead of `'admin'`. | rbac.php, all pages | Done. |
+| S-13 | done | **Input validation** — shared `backend/lib/validation.php` (`is_valid_name`/`is_valid_email`) rejects malformed names (digits/symbols) and emails **server-side before any DB write** in `register.php` and all five registration APIs (add + update); matching HTML5 `pattern` gives client-side feedback. Improves data integrity for PHI records. | validation.php, register.php, api/* | Done. Names/email only; free-text fields (address, notes) unchanged. Password policy (S-9) still open. |
 
 ## Secrets handling
 

@@ -195,7 +195,7 @@ $canWritePatient = can_access('patients', 'write');
 <form id="quickRegistrationForm" class="space-y-4">
 <div class="space-y-1.5">
 <label class="text-label-bold text-on-surface-variant block">Full name</label>
-<input id="quickFullName" class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="Last, First Middle" type="text" required/>
+<input id="quickFullName" class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" placeholder="Last, First Middle" type="text" required pattern="[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ ,'.-]*" title="Letters, spaces, hyphens, apostrophes, periods, and commas only."/>
 </div>
 <div class="grid grid-cols-2 gap-4">
 <div class="space-y-1.5">
@@ -258,16 +258,16 @@ $canWritePatient = can_access('patients', 'write');
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div class="space-y-1.5">
 <label class="text-label-bold text-on-surface-variant block">First Name *</label>
-<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-3 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="firstName" placeholder="Enter first name" required/>
+<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-3 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="firstName" placeholder="Enter first name" required pattern="[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ '.-]*" title="Letters, spaces, hyphens, apostrophes, and periods only."/>
 </div>
 <div class="space-y-1.5">
 <label class="text-label-bold text-on-surface-variant block">Last Name *</label>
-<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-3 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="lastName" placeholder="Enter last name" required/>
+<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-3 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="lastName" placeholder="Enter last name" required pattern="[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ '.-]*" title="Letters, spaces, hyphens, apostrophes, and periods only."/>
 </div>
 </div>
 <div class="space-y-1.5">
 <label class="text-label-bold text-on-surface-variant block">Middle Name</label>
-<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="middleName"/>
+<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-2.5 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="middleName" pattern="[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ '.-]*" title="Letters, spaces, hyphens, apostrophes, and periods only."/>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div class="space-y-1.5">
@@ -301,7 +301,7 @@ $canWritePatient = can_access('patients', 'write');
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 <div class="space-y-1.5">
 <label class="text-label-bold text-on-surface-variant block">Emergency Contact Name</label>
-<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-3 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="emergencyName" placeholder="Name of emergency contact"/>
+<input class="w-full bg-surface border border-outline-variant/40 rounded-lg px-4 py-3 text-body-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all" type="text" name="emergencyName" placeholder="Name of emergency contact" pattern="[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ '.-]*" title="Letters, spaces, hyphens, apostrophes, and periods only."/>
 </div>
 <div class="space-y-1.5">
 <label class="text-label-bold text-on-surface-variant block">Emergency Contact Phone</label>
