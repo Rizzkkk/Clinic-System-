@@ -18,7 +18,7 @@ manual page refresh (i.e. it is in the database), not just shown on screen.
 |---|------|----------|:------:|
 | 1.1 | Log in with a valid account | Lands on Dashboard; session set | |
 | 1.2 | Log in with a wrong password | Rejected, no session | |
-| 1.3 | Open a module URL directly while logged out | Redirected to `index.php` | |
+| 1.3 | Open a module URL directly while logged out | Redirected to `login.php` | |
 | 1.4 | Log out (sidebar) | Session cleared; back to login | |
 | 1.5 | Register a new account (`register.php`) | Created as **pending** (admin assigns role); name/email validated; any error shows as a SweetAlert overlay with the CREATE ACCOUNT button still reachable | |
 | 1.6 | Password reset (`ForgotPassword.php`) end-to-end | Request → link (dev: error log) → set new password → log in with it; messages show as a SweetAlert overlay | |
@@ -99,7 +99,7 @@ enforced **both** client-side (browser bubble) and server-side (rejected before 
 | 7.4 | Quick patient registration `Last, First Middle` (with comma) | Accepted (comma allowed on that field only) | |
 | 7.5 | Malformed email in any registration form | Rejected client + server | |
 | 7.6 | `register.php`: submit with mismatched passwords / bad input | Error shows as a **SweetAlert overlay**; **CREATE ACCOUNT button stays visible/clickable**; entered values retained; **no refresh needed** | |
-| 7.7 | `index.php` bad login / `ForgotPassword.php` request | Message shows as a SweetAlert overlay (no layout shift) | |
+| 7.7 | `login.php` bad login / `ForgotPassword.php` request | Message shows as a SweetAlert overlay (no layout shift) | |
 
 ---
 

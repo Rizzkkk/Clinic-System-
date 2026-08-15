@@ -193,7 +193,7 @@ $e = static fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
 
         <div class="back-link">
           <span>Remember your password?</span>
-          <a href="index.php">Login</a>
+          <a href="login.php">Login</a>
         </div>
       </div>
     </div>

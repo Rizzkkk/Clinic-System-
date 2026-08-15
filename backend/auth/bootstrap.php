@@ -48,7 +48,7 @@ if (!isset($_SESSION['user_id'])) {
         exit;
     }
 
-    header('Location: index.php');
+    header('Location: login.php');
     exit;
 }
 

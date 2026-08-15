@@ -19,7 +19,7 @@ page is also its own endpoint: it answers `GET ?api=...` for reads and `POST` wi
 
 ## Conventions (verified)
 
-**Auth:** every module page calls `session_start()` and redirects to `index.php` if
+**Auth:** every module page calls `session_start()` and redirects to `login.php` if
 `$_SESSION['user_id']` is unset. API calls therefore require a valid session cookie.
 
 **Reads — `GET <Module>.php?api=<name>`:**

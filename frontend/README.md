@@ -10,10 +10,10 @@ Tailwind and a few libraries loaded via CDN.
 
 | Folder | Holds | Status |
 |--------|-------|--------|
-| `partials/` | `sidebar.php` — the single shared left nav, role-filtered via `can_access()`, plus the shared SweetAlert2 include and `window.showError` / `showSuccess` / `confirmAction` helpers. | **done** |
+| `partials/` | `sidebar.php` (module nav); `public-header.php` / `public-footer.php` (public website pages + cookie banner). | partial |
 | `assets/img/` | `ASCLEPIUS.jpg` (logo, wired into the sidebar and PDFs via `backend/config/clinic.php`), `Doctors.webp`. | **done** |
-| `assets/css/` | Shared styles to be extracted from the per-page inline `<style>` blocks. | planned |
-| `assets/js/`  | Shared / per-page `fetch()` logic that calls the backend `?api=` / POST endpoints. | planned |
+| `assets/css/` | `landing.css`, `login.css`; shared module styles still planned for extraction. | partial |
+| `assets/js/`  | `cookies.js` (cookie consent banner + preferences); module `fetch()` logic still planned. | partial |
 | `views/` | Per-module page markup, once the root `*.php` pages are moved here. | planned |
 
 ## Shared sidebar

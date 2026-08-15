@@ -260,7 +260,7 @@ $conn->close();
             </ol>
         </div>
 
-        <a href="index.php" class="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200 text-center block">
+        <a href="../login.php" class="w-full bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white font-bold py-3 px-4 rounded-lg transition-all duration-200 text-center block">
             Go to Login Page
         </a>
 

@@ -29,9 +29,10 @@ backups. All code phases (0-3) are built and QA'd.
 ```
 asclepius-demos/
 ├── (root = web root)            Entry pages a browser hits directly. URLs unchanged.
-│   ├── index.php                Login            ┐
+│   ├── index.php                Landing (public) ┐
+│   ├── login.php                Staff login      │
 │   ├── register.php             Create account   │ auth pages
-│   ├── ForgotPassword.php       Reset (stub)     ┘
+│   ├── ForgotPassword.php       Reset            ┘
 │   ├── Dashboard.php            ┐
 │   ├── Patient.php              │
 │   ├── Doctor.php               │ working module pages — now thin VIEWS:

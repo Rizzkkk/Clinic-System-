@@ -1,5 +1,33 @@
 # CHANGELOG - Walk-in Appointment Registration System
 
+## 2026-08-15 — Public site pages (privacy, terms, cookies, FAQ)
+
+### Added
+- **`frontend/partials/public-header.php` / `public-footer.php`** — shared chrome for the
+  public pages: nav, footer link row, and the cookie-consent banner.
+- **`privacy.php`, `terms.php`, `cookies.php`, `faq.php`** — public information pages linked
+  from the footer, all rendered through the shared partials and `landing.css`.
+- **`frontend/assets/js/cookies.js`** — stores the banner choice in `localStorage`; the banner
+  stays hidden once a choice is made.
+
+### Changed
+- **`login.php`** uses the split photo layout with the sign-in form; styles in
+  `frontend/assets/css/login.css`.
+
+## 2026-08-15 — Public landing page + login split
+
+### Added
+- **`index.php` internal home page** — staff entry screen (not a public marketing site) with
+  authorized personnel notice, login link, and module summary. Styles in
+  `frontend/assets/css/landing.css`.
+- **`login.php`** — staff login moved out of `index.php` (same UI/behavior as before, plus
+  “Back to home” link).
+
+### Changed
+- **Auth redirects** — unauthenticated module/API access redirects to `login.php`; logout returns
+  to the public landing (`index.php`). `register.php`, `ForgotPassword.php`, and `dev/install.php`
+  login links updated to `login.php`.
+
 ## 2026-07-19 — Registration input validation + auth error display
 
 ### Added

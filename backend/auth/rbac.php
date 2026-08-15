@@ -1,6 +1,6 @@
 <?php
 // Role-based access control. Requires the session to be started (bootstrap does that) and the
-// current user's role in $_SESSION['user_role'] (set at login in index.php).
+// current user's role in $_SESSION['user_role'] (set at login in login.php).
 //
 // Roles: admin, reception, lab, cashier, doctor. 'admin' is a superuser (always allowed).
 
@@ -29,7 +29,7 @@ const MODULE_PERMISSIONS = [
 function current_role(): string
 {
     // Default to '' (no role) when the session has no role, so a missing/stale session gets
-    // NO access rather than superuser. Login (index.php) always sets $_SESSION['user_role'].
+    // NO access rather than superuser. Login (login.php) always sets $_SESSION['user_role'].
     return $_SESSION['user_role'] ?? '';
 }
 

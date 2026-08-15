@@ -1,422 +1,174 @@
 <?php
 require_once __DIR__ . '/backend/lib/session.php';
 asclepius_start_session();
+require_once __DIR__ . '/backend/config/clinic.php';
 
-require_once __DIR__ . '/db.php';
-
-$loginError = '';
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
-  $email = trim($_POST['email'] ?? '');
-  $password = $_POST['password'] ?? '';
-
-  if ($email === '' || $password === '') {
-    $loginError = 'Please enter both email and password.';
-  } else {
-    $statement = $conn->prepare('SELECT id, full_name, password_hash, role FROM users WHERE email = ? LIMIT 1');
-    $statement->bind_param('s', $email);
-    $statement->execute();
-    $result = $statement->get_result();
-    $user = $result->fetch_assoc();
-
-    if ($user && password_verify($password, $user['password_hash'])) {
-      session_regenerate_id(true);
-      $_SESSION['user_id'] = $user['id'];
-      $_SESSION['user_name'] = $user['full_name'];
-      $_SESSION['user_role'] = $user['role'] ?? 'admin';
-      header('Location: Dashboard.php');
-      exit;
-    }
-
-    $loginError = 'Invalid email or password.';
-    $statement->close();
-  }
+$validRoles = ['admin', 'doctor', 'reception', 'lab', 'cashier'];
+if (isset($_SESSION['user_id']) && in_array($_SESSION['user_role'] ?? '', $validRoles, true)) {
+  header('Location: Dashboard.php');
+  exit;
 }
+
+$clinic = clinic_info();
+$contactLines = clinic_contact_lines();
+$pageTitle = 'ASCLEPIUS Medical & Diagnostic Group Inc.';
+$metaDescription = 'Asclepius Medical and Diagnostic Group Inc. Quality medical and diagnostic services.';
+
+require __DIR__ . '/frontend/partials/public-header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Hospital Information System</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-  <style>
-    *{
-      margin:0;
-      padding:0;
-      box-sizing:border-box;
-      font-family: 'Poppins', sans-serif;
-    }
-
-    body{
-      background: #f4f6fb;
-      height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      overflow-y: auto;
-    }
-
-    .container{
-      width: 100vw;
-      max-width: none;
-      min-height: 100vh;
-      background: #fff;
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      border-radius: 0;
-      box-shadow: none;
-    }
-
-    /* Left Section */
-    .left-section{
-      width: 50%;
-      padding: 50px 60px;
-      position: relative;
-      z-index: 2;
-    }
-
-    .logo{
-      width: 110px;
-      margin-bottom: 20px;
-    }
-
-    .branding{
-      display: flex;
-      align-items: center;
-      gap: 18px;
-      margin-bottom: 18px;
-    }
-
-    .company-text{
-      display: flex;
-      flex-direction: column;
-      line-height: 1;
-    }
-
-    .company-main{
-      color: #0aa6a6;
-      font-size: 34px;
-      font-weight: 800;
-      letter-spacing: 2px;
-    }
-
-    .company-sub{
-      color: #0aa6a6;
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      margin-top: 6px;
-    }
-
-    .system-title{
-      display: inline-block;
-      border: 3px solid #1d2433;
-      border-radius: 40px;
-      padding: 10px 35px;
-      font-size: 42px;
-      font-weight: 600;
-      color: #1d2433;
-      margin-bottom: 50px;
-    }
-
-    .form-container{
-      width: 320px;
-      margin-left: 40px;
-    }
-
-    .input-group{
-      margin-bottom: 12px;
-    }
-
-    .input-group label{
-      display: block;
-      font-size: 12px;
-      color: #444;
-      margin-bottom: 6px;
-    }
-
-    .input-group select,
-    .input-group input{
-      width: 100%;
-      padding: 10px 12px;
-      border: 2px solid #c9ced8;
-      border-radius: 6px;
-      outline: none;
-      font-size: 14px;
-      transition: border-color 0.2s ease;
-    }
-
-    .input-group select:focus,
-    .input-group input:focus{
-      border-color: #2bb18f;
-    }
-
-    .input-group select:hover,
-    .input-group input:hover{
-      border-color: #2bb18f;
-    }
-
-    .password-box{
-      position: relative;
-    }
-
-    .password-box .toggle-password{
-      position: absolute;
-      right: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #2bb18f;
-      font-size: 14px;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      padding: 0;
-      font-weight: 600;
-    }
-
-    .password-box .toggle-password:hover{
-      color: #1d8f76;
-    }
-
-    .options{
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 25px;
-      font-size: 14px;
-    }
-
-    .remember{
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .forgot{
-      color: red;
-      text-decoration: none;
-      font-size: 13px;
-    }
-
-    .login-btn{
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 5px;
-      background: #2bb18f;
-      color: #fff;
-      font-size: 18px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .login-btn:hover{
-      background: #259676;
-      transform: scale(1.02) translateY(-2px);
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
-    }
-
-    .login-btn:active{
-      transform: scale(0.98);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-
-    .create-account{
-      margin-top: 18px;
-      text-align: center;
-      font-size: 14px;
-      color: #5f6f8d;
-    }
-
-    .create-account a{
-      color: #2bb18f;
-      text-decoration: none;
-      font-weight: 600;
-      margin-left: 6px;
-    }
-
-    .create-account a:hover{
-      text-decoration: underline;
-    }
-
-    .message{
-      margin-bottom: 14px;
-      padding: 10px 12px;
-      border-radius: 6px;
-      font-size: 13px;
-      line-height: 1.4;
-    }
-
-    .message.error{
-      background: #fde8e8;
-      color: #b42318;
-      border: 1px solid #f5c2c7;
-    }
-
-    /* Right Section */
-    .right-section{
-      width: 50%;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .right-section img{
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    /* Curved White Shape */
-    .curve{
-      position: absolute;
-      top: -120px;
-      right: 35%;
-      width: 700px;
-      height: 130%;
-      background: white;
-      border-radius: 50%;
-      z-index: 1;
-    }
-
-    /* Blue Accent */
-    .blue-shape-top{
-      position: absolute;
-      top: -80px;
-      left: 38%;
-      width: 220px;
-      height: 250px;
-      background: rgba(70, 95, 170, 0.7);
-      border-radius: 50%;
-      transform: rotate(20deg);
-      z-index: 0;
-    }
-
-    .blue-shape-bottom{
-      position: absolute;
-      bottom: -120px;
-      right: -70px;
-      width: 350px;
-      height: 280px;
-      background: rgba(70, 95, 170, 0.7);
-      border-radius: 50%;
-      z-index: 0;
-    }
-
-    @media(max-width: 1024px){
-      .container{
-        flex-direction: column;
-        height: auto;
-      }
-
-      .left-section,
-      .right-section{
-        width: 100%;
-      }
-
-      .form-container{
-        width: 100%;
-        margin-left: 0;
-      }
-
-      .system-title{
-        font-size: 28px;
-      }
-
-      .curve{
-        display: none;
-      }
-    }
-  </style>
-</head>
-<body>
-
-  <div class="container">
-
-    <div class="curve"></div>
-    <div class="blue-shape-top"></div>
-    <div class="blue-shape-bottom"></div>
-
-    <!-- Left -->
-    <div class="left-section">
-
-      <div class="branding">
-        <img src="frontend/assets/img/ASCLEPIUS.jpg" class="logo" alt="Logo">
-        <div class="company-text">
-          <div class="company-main">ASCLEPIUS</div>
-          <div class="company-sub">Medical & Diagnostic Group Inc.</div>
+  <main>
+    <section class="hero-banner">
+      <img src="frontend/assets/img/Doctors.webp" alt="Asclepius medical team">
+      <div class="hero-overlay">
+        <div class="wrap hero-caption">
+          <p class="hero-eyebrow">Medical & Diagnostic Group Inc.</p>
+          <h1>Quality care you can trust</h1>
+          <p>Accurate diagnostics and compassionate medical services for every patient.</p>
         </div>
       </div>
+    </section>
 
-      
-      <div class="form-container">
-        <form method="post" action="" autocomplete="on">
-          <div class="input-group">
-            <label for="login-email">Username</label>
-            <input id="login-email" name="email" type="text" placeholder="Email" value="<?php echo htmlspecialchars($_POST['email'] ?? '', ENT_QUOTES, 'UTF-8'); ?>">
-          </div>
-
-          <div class="input-group">
-            <label for="login-password">Password</label>
-            <div class="password-box">
-              <input id="login-password" name="password" type="password" placeholder="Password">
-              <button type="button" class="toggle-password" onclick="togglePassword()">Show</button>
-            </div>
-          </div>
-
-          <div class="options">
-            <div class="remember">
-              <input type="checkbox" checked>
-              <span>Remember Me</span>
-            </div>
-
-            <a href="ForgotPassword.php" class="forgot">
-              Forgot Password?
-            </a>
-          </div>
-
-          <button class="login-btn" type="submit" name="login_submit" value="1">
-            LOGIN
-          </button>
-        </form>
-
-        <div class="create-account">
-          <span>Don't have an account?</span>
-          <a href="register.php">Create account</a>
-        </div>
-
+    <section class="promo-row">
+      <div class="wrap promo-grid">
+        <a href="#services" class="promo-tile promo-tile-primary">
+          <span class="promo-label">Services offered</span>
+          <strong>View our services</strong>
+        </a>
+        <a href="#contact" class="promo-tile promo-tile-secondary">
+          <span class="promo-label">Get in touch</span>
+          <strong>Contact us</strong>
+        </a>
       </div>
-    </div>
+    </section>
 
-    <!-- Right -->
-    <div class="right-section">
-      <img src="frontend/assets/img/Doctors.webp" alt="Doctor">
-    </div>
+    <section class="whats-new">
+      <div class="wrap">
+        <h2 class="block-title">What's new?</h2>
+        <div class="news-grid">
+          <article class="news-card">
+            <p class="news-tag">Clinic update</p>
+            <h3>Expanded laboratory services</h3>
+            <p>ASCLEPIUS now supports multi test laboratory orders with printable PDF reports.</p>
+          </article>
+          <article class="news-card">
+            <p class="news-tag">Patient care</p>
+            <h3>Walk in and online appointments</h3>
+            <p>Book visits with our doctors at your convenience through our clinic team.</p>
+          </article>
+          <article class="news-card">
+            <p class="news-tag">Diagnostics</p>
+            <h3>X-ray and imaging records</h3>
+            <p>Secure storage and access for diagnostic imaging linked to patient care.</p>
+          </article>
+        </div>
+      </div>
+    </section>
 
-  </div>
+    <section class="highlights">
+      <div class="wrap">
+        <h2 class="highlights-headline">Trusted medical & diagnostic center</h2>
+        <div class="highlights-grid">
+          <article class="highlight-item">
+            <div class="highlight-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <h3>Complete clinic services</h3>
+            <p>Consultation, laboratory, imaging, dental, and billing under one group.</p>
+          </article>
+          <article class="highlight-item">
+            <div class="highlight-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <h3>Accurate results</h3>
+            <p>Laboratory and diagnostic results managed with care and professional reporting.</p>
+          </article>
+          <article class="highlight-item">
+            <div class="highlight-icon" aria-hidden="true">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <h3>Experienced team</h3>
+            <p>Doctors, lab staff, and clinic personnel working together for your health.</p>
+          </article>
+        </div>
+      </div>
+    </section>
 
-  <script>
-    function togglePassword() {
-      const passwordInput = document.getElementById('login-password');
-      const toggleBtn = document.querySelector('.toggle-password');
-      if (passwordInput.type === 'password') {
-        passwordInput.type = 'text';
-        toggleBtn.textContent = 'Hide';
-      } else {
-        passwordInput.type = 'password';
-        toggleBtn.textContent = 'Show';
-      }
-    }
-  </script>
+    <section class="section" id="services">
+      <div class="wrap">
+        <h2 class="block-title">Services offered</h2>
+        <div class="service-grid">
+          <article class="service-card">
+            <h3>General consultation</h3>
+            <p>Medical check ups, diagnosis, and treatment with our clinic physicians.</p>
+          </article>
+          <article class="service-card">
+            <h3>Laboratory</h3>
+            <p>Clinical tests, blood work, and laboratory results for accurate diagnosis.</p>
+          </article>
+          <article class="service-card">
+            <h3>X-ray & imaging</h3>
+            <p>Diagnostic imaging to support timely medical decisions.</p>
+          </article>
+          <article class="service-card">
+            <h3>Dental care</h3>
+            <p>Dental records and diagnostic support for oral health.</p>
+          </article>
+          <article class="service-card">
+            <h3>Prescriptions</h3>
+            <p>Medication orders prepared by our clinical team.</p>
+          </article>
+          <article class="service-card">
+            <h3>Appointments</h3>
+            <p>Walk in and scheduled visits with our doctors.</p>
+          </article>
+        </div>
+      </div>
+    </section>
 
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <?php if ($loginError !== ''): ?>
-  <script>Swal.fire({ icon: 'error', title: 'Something went wrong', text: <?php echo json_encode($loginError); ?>, confirmButtonColor: '#00685d' });</script>
-  <?php endif; ?>
-</body>
-</html>
+    <section class="section section-muted" id="about">
+      <div class="wrap about-block">
+        <div class="about-copy">
+          <h2 class="block-title">About us</h2>
+          <p>
+            <strong><?php echo htmlspecialchars($clinic['name'], ENT_QUOTES, 'UTF-8'); ?></strong>
+            is a medical and diagnostic group committed to accessible, reliable healthcare. We combine
+            modern technology with compassionate service so every patient receives quality care.
+          </p>
+          <p>
+            Our clinic information system supports coordinated care across patients, appointments,
+            records, laboratory, and billing for a smoother experience.
+          </p>
+        </div>
+        <div class="about-badge">
+          <img src="<?php echo htmlspecialchars($clinic['logoWeb'], ENT_QUOTES, 'UTF-8'); ?>" alt="">
+          <p>ASCLEPIUS<br>Medical & Diagnostic Group Inc.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="contact">
+      <div class="wrap contact-grid">
+        <div>
+          <h2 class="block-title">Contact us</h2>
+          <p class="contact-lead">For inquiries about our services, please reach out to our clinic.</p>
+          <?php if ($contactLines !== []): ?>
+          <ul class="contact-list">
+            <?php foreach ($contactLines as $line): ?>
+            <li><?php echo htmlspecialchars($line, ENT_QUOTES, 'UTF-8'); ?></li>
+            <?php endforeach; ?>
+          </ul>
+          <?php else: ?>
+          <p class="contact-note">Phone and email details coming soon.</p>
+          <?php endif; ?>
+        </div>
+        <aside class="staff-box">
+          <h3>Clinic staff</h3>
+          <p>Authorized personnel may sign in to the hospital information system.</p>
+          <a href="login.php" class="btn btn-primary">Staff login</a>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+<?php require __DIR__ . '/frontend/partials/public-footer.php'; ?>

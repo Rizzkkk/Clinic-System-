@@ -6,12 +6,12 @@ with remediation.
 
 ## Authentication (current)
 
-- Session-based. `index.php` verifies email + password with `password_verify()` against the
+- Session-based. `login.php` verifies email + password with `password_verify()` against the
   `password_hash` in `users`, then `session_regenerate_id(true)` and stores `user_id` /
   `user_name` in `$_SESSION`.
 - Registration (`register.php`) hashes with `password_hash($pw, PASSWORD_DEFAULT)`, rejects
   duplicate emails, and validates the full name and email format (see S-13).
-- Every module page redirects to `index.php` when `$_SESSION['user_id']` is unset.
+- Every module page redirects to `login.php` when `$_SESSION['user_id']` is unset.
 
 This part is sound. The gaps below are around the *rest* of the stack.
 
@@ -49,14 +49,14 @@ the rest are tracked here.
 | # | Sev | Issue | Where | Remediation |
 |---|:---:|-------|-------|-------------|
 | S-1 | HIGH | **DB credentials hardcoded and committed.** | `db.php` (live host `u805024096_*`), `install.php` (`root`) | Move to environment via `backend/config` + `.env` (gitignored). **Rotate the exposed credentials** — they are in git history. |
-| S-2 | done | **CSRF** — done for module writes via an **Origin/Referer check** + `SameSite=Lax` cookies in `bootstrap.php` / `backend/lib/session.php` (no per-write token needed; the app is same-origin `fetch()`). Verified: cross-origin POST → `403`. | bootstrap | Done. *Follow-up:* extend the check to `index.php`/`register.php` login/register POSTs. |
+| S-2 | done | **CSRF** — done for module writes via an **Origin/Referer check** + `SameSite=Lax` cookies in `bootstrap.php` / `backend/lib/session.php` (no per-write token needed; the app is same-origin `fetch()`). Verified: cross-origin POST → `403`. | bootstrap | Done. *Follow-up:* extend the check to `login.php`/`register.php` login/register POSTs. |
 | S-3 | MED | **SQL injection pattern** — id interpolated into query. | `Patient.php` `?api=get_contacts` (`WHERE patientId = $patientId`) | Use a prepared statement with a bound `i` param. (Currently int-cast, so not exploitable, but must not be the pattern.) |
 | S-4 | MED | **DB error messages leaked to client.** | all handlers return `'Error: ' . $stmt->error` | Return a generic message; log the real error server-side. |
 | S-5 | MED | **Dev/install utilities shippable.** | `install.php`, `add_table.php` | Remove from production; they create tables and (install.php) use `root`/no password. |
 | S-6 | MED | **DDL runs on every request.** | `db.php` | Connection-only; schema via migrations. Also avoids masking schema drift. |
 | S-7 | done | **Real password reset** implemented — `ForgotPassword.php` is a server-driven token flow (`password_resets` table; SHA-256-hashed single-use token, 1h expiry on the DB clock; generic no-enumeration response; dev logs the link, prod emails it). | ForgotPassword.php | Done. |
 | S-8 | done | **RBAC** — `users.role`, login stores role, `require_module_access()` (read/write per the matrix above) enforced in all 7 API handlers + the 4 server-rendered pages. admin = superuser; `doctor` role confirmed. | whole app | Done. Runtime grid QA passed: 35/35 reads + 11/11 write checks across the 5 roles match the matrix. |
-| S-9 | LOW | **No password policy / rate limiting** on login/register. | `index.php`, `register.php` | Add minimum length + basic throttling/lockout on repeated failures. |
+| S-9 | LOW | **No password policy / rate limiting** on login/register. | `login.php`, `register.php` | Add minimum length + basic throttling/lockout on repeated failures. |
 | S-10 | done | Session cookies now set `HttpOnly` + `SameSite=Lax` + `Secure`-on-HTTPS via `backend/lib/session.php`. | session | Done (idle timeout still optional). |
 | S-11 | done | Error display is now env-controlled: `config.php` forces `display_errors=0` + `log_errors=1` when `APP_ENV=production` (the default). Dev sets `APP_ENV=development`. | config.php | Done. |
 | S-12 | done | **RBAC enforced in the UI + hardening.** New `can_access($module,$mode)` boolean drives a shared role-filtered sidebar (`frontend/partials/sidebar.php`) and hides in-page write controls, so users only see what they can use. Added page-load `require_module_access` to `Patient`/`Doctor`/`Appointment` (were API-only, so the shell rendered for any role). `current_role()` now defaults to `''` (no access) instead of `'admin'`. | rbac.php, all pages | Done. |

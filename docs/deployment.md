@@ -27,7 +27,7 @@ Don't consider a change done on `php -l` alone — **run it.** With XAMPP MySQL 
    `INSERT INTO users (full_name,email,password_hash) VALUES ('QA','qa@test.com','<hash>');`
 2. Start the server: `start-local-server.bat` (or `php -S localhost:8000`).
 3. Log in, saving the cookie:
-   `curl -c c.txt --data "login_submit=1&email=qa@test.com&password=test1234" http://localhost:8000/index.php`
+   `curl -c c.txt --data "login_submit=1&email=qa@test.com&password=test1234" http://localhost:8000/login.php`
 4. Exercise endpoints with the cookie — expect **JSON** (not HTML):
    - read: `curl -b c.txt "http://localhost:8000/backend/api/doctors.php?api=get_stats"`
    - write: `curl -b c.txt --data "action=add_doctor&firstName=A&lastName=B&specialty=X&department=Y&licenseNumber=L1&employeeId=E1" http://localhost:8000/backend/api/doctors.php` → `{"success":true,...}`

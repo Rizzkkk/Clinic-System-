@@ -11,7 +11,7 @@ the sections that matter most to your audience.
 1. Start **XAMPP** and click **Start** on **MySQL**.
 2. Double-click **`start-local-server.bat`** (leave the window open). It serves the app at
    `http://localhost:8000`.
-3. Open `http://localhost:8000/index.php` in your browser.
+3. Open `http://localhost:8000/index.php` in your browser, then click **Staff login**.
 4. Have the seeded accounts ready (all password **`test1234`**), from `docs/qa-accounts.md`:
 
    | Login | Role | Use it to show |

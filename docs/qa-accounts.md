@@ -26,7 +26,7 @@ The local database already has one login per role. **Password for all: `test1234
 | `lab@test.com` | lab |
 | `cashier@test.com` | cashier |
 
-Log in at `http://localhost:8000/index.php`. (If they're missing — e.g. a fresh DB — create
+Log in at `http://localhost:8000/login.php`. (If they're missing — e.g. a fresh DB — create
 them with "Create a login for a role" below.)
 
 ## Create a login for a specific role

@@ -171,7 +171,7 @@ never disagree.
 
 ## 8. Project layout (orientation)
 
-- **Repo root** — the pages you navigate to by URL (`index.php` login,
+- **Repo root** — the pages you navigate to by URL (`index.php` landing, `login.php`,
   `Dashboard.php`, `Patient.php`, `Doctor.php`, `Appointment.php`,
   `Prescription.php`, `Biling.php`, `Medical Records.php`,
   `Laboratory Result.php`, `X-ray.php`, `Dental.php`, `Psych.php`,

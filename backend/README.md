@@ -24,7 +24,7 @@ Every root page and every `api/` handler includes `auth/bootstrap.php` **first**
 1. Starts the hardened session (`lib/session.php` — HttpOnly, SameSite=Lax, Secure on HTTPS).
 2. Opens the single shared mysqli connection (`db/connection.php`, TLS-capable for cloud DBs).
 3. Rejects cross-origin POSTs (Origin/Referer host must match — the current CSRF defense).
-4. Redirects anonymous page loads to `index.php`; returns JSON `401`/`403` for API/POST.
+4. Redirects anonymous page loads to `login.php`; returns JSON `401`/`403` for API/POST.
 5. Blocks accounts with no assigned staff role (self-registered `pending` users get no access).
 
 After bootstrap, each handler includes `auth/rbac.php` and calls `require_module_access('<module>')`,

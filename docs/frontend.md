@@ -13,7 +13,8 @@ visual styles exist today and should be unified during migration:
 
 | Surface | Styling | Font |
 |---------|---------|------|
-| Auth pages (`index.php`, `register.php`, `ForgotPassword.php`) | Hand-written `<style>` blocks | Poppins |
+| Landing (`index.php`) | Shared `frontend/assets/css/landing.css` | Poppins |
+| Auth login (`login.php`) | Shared `frontend/assets/css/login.css` | Poppins |
 | Module pages (Patient, Doctor, Appointment, …) | **Tailwind via CDN** with a per-page `tailwind.config` theme | Inter + Manrope + Material Symbols |
 | Install/utility pages (`install.php`, `add_table.php`) | Tailwind via CDN | Inter |
 
@@ -36,7 +37,12 @@ Legend: done = working (real DB) · partial · stub = static UI, no backend.
 
 | Page (file) | State | Auth guard | What it does | Gaps / notes |
 |-------------|:----:|:---------:|--------------|--------------|
-| `index.php` (Login) | done | n/a | Email+password login; hashed verify; `session_regenerate_id`. | "Remember me" checkbox is decorative. Label says "Username" but field is email. |
+| `index.php` (Landing) | done | n/a | Public clinic website (Hi-Precision style layout). | Shared header/footer partials. |
+| `privacy.php` | done | n/a | Privacy policy. | |
+| `cookies.php` | done | n/a | Cookie policy + preference toggles (localStorage). | Banner on all public pages. |
+| `terms.php` | done | n/a | Terms of use. | |
+| `faq.php` | done | n/a | Frequently asked questions. | |
+| `login.php` (Login) | done | n/a | Centered staff login card, no photo. | "Remember me" decorative. |
 | `register.php` | done | n/a | Create staff account; duplicate-email check; `password_hash`. | No password strength/format rules; no role selection (RBAC pending). |
 | `ForgotPassword.php` | done | no | Server-driven token reset (email link -> new password). | Token-based (`password_resets`), single-use, 1h expiry, no user enumeration. |
 | `Dashboard.php` | done | yes | Counts/metrics across modules; `?api=get_stats`. | Some UI state kept in `localStorage`. |

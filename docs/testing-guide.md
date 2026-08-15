@@ -11,7 +11,7 @@ For install and run instructions, see `docs/getting-started.md`.
 
 ## 0. Before you start
 
-1. The app is running (`http://localhost:8000/index.php`) and the database schema
+1. The app is running (`http://localhost:8000/index.php` → **Staff Login**) and the database schema
    is loaded.
 2. Set `APP_ENV=development` in `backend/config/.env` while testing so PHP
    warnings and errors are visible in the browser instead of hidden.
@@ -82,14 +82,14 @@ expected 302/403 behaviour).
 
 ## 2. Authentication and session
 
-Log in at `index.php`; the app stores the user in the session and every page
+Log in at `login.php`; the app stores the user in the session and every page
 redirects unauthenticated visitors back to login.
 
 - [ ] Valid email + password logs in and lands on `Dashboard.php`.
 - [ ] Wrong password is rejected (no login, generic error — it must not reveal
       whether the email exists).
 - [ ] Visiting any module page (e.g. `Patient.php`) while logged out redirects to
-      `index.php`.
+      `login.php`.
 - [ ] `logout.php` ends the session; afterwards protected pages redirect to login
       again.
 - [ ] A freshly registered account (role `pending`) can log in but sees no module
@@ -128,7 +128,7 @@ Use a cookie jar to keep the session. Replace the email/password as needed.
 ```
 # Log in and save the session cookie
 curl -s -c cookies.txt -d "email=doctor@test.com&password=test1234" \
-  http://localhost:8000/index.php -o /dev/null
+  http://localhost:8000/login.php -o /dev/null
 
 # Allowed read for a doctor -> expect HTTP 200 and JSON
 curl -s -b cookies.txt "http://localhost:8000/Prescription.php?api=list"
