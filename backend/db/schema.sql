@@ -2,6 +2,11 @@
 -- Captured from the previously-inline schema in db.php (the most complete version:
 -- indexes, ON DELETE rules, and the full medical_records columns).
 --
+-- RUN ONCE, ON A FRESH DATABASE. The CREATE TABLE statements are IF NOT EXISTS, but the
+-- ALTER TABLE at the bottom (the patient-portal foreign keys) is not - re-running this file over
+-- an already-populated database fails with errno 1826 (duplicate foreign key name). To bring an
+-- EXISTING database up to date, apply the numbered files in migrations/ instead.
+--
 -- Local dev: uncomment the CREATE DATABASE / USE lines below.
 -- Shared hosting: the database already exists; select it in your panel, then run the
 -- CREATE TABLE statements. Do NOT run this on every request — apply deliberately.
@@ -16,11 +21,22 @@ CREATE TABLE IF NOT EXISTS users (
   full_name VARCHAR(150) NOT NULL,
   email VARCHAR(191) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
+  -- Staff roles: admin, doctor, reception, lab, cashier ('pending' = no access yet).
+  -- Patient portal roles: patient_pending, patient, patient_rejected (migration 010).
   role VARCHAR(20) NOT NULL DEFAULT 'pending',
+  -- Portal link. NULL for every staff row. Set only when reception approves a portal signup.
+  patientId INT UNSIGNED NULL,
+  -- What the applicant typed at signup, used by reception to match them to a patients row.
+  claimedDob DATE NULL,
+  claimedPhone VARCHAR(20) NULL,
+  linkedAt DATETIME NULL,
+  linkedBy INT UNSIGNED NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY unique_users_email (email)
+  UNIQUE KEY unique_users_email (email),
+  -- One portal account per patient. MySQL allows many NULLs here, so staff rows are unaffected.
+  UNIQUE KEY users_patient_uk (patientId)
 );
 
 CREATE TABLE IF NOT EXISTS doctors (
@@ -353,3 +369,11 @@ CREATE TABLE IF NOT EXISTS agency_referrals (
   INDEX referral_patient_idx (patientId),
   CONSTRAINT referral_patient_fk FOREIGN KEY (patientId) REFERENCES patients(id) ON DELETE CASCADE
 );
+
+-- Portal foreign keys are added here, at the end, because users is created before patients
+-- above and a FK cannot reference a table that does not exist yet. See migration 010.
+-- ON DELETE SET NULL on patientId: removing a patient record breaks the portal link rather
+-- than silently deleting the login; require_patient() then fails closed for that account.
+ALTER TABLE users
+  ADD CONSTRAINT users_patient_fk   FOREIGN KEY (patientId) REFERENCES patients(id) ON DELETE SET NULL,
+  ADD CONSTRAINT users_linked_by_fk FOREIGN KEY (linkedBy)  REFERENCES users(id)    ON DELETE SET NULL;

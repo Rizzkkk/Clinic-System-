@@ -1,5 +1,17 @@
 # Architecture
 
+> **Patient portal.** `backend/auth/bootstrap.php` now has a third branch. Before the staff-role
+> gate it checks whether the session's role is one of the portal roles, and if so allows the
+> request only when `ASCLEPIUS_PORTAL` is defined - which only `backend/auth/portal.php` does.
+> That single chokepoint keeps patient accounts out of every staff page and every
+> `backend/api/*.php` handler without editing any of them, and (being checked *before* the staff
+> branch) avoids a `rbac_deny()` redirect loop back to `Dashboard.php`.
+>
+> The portal is also architecturally different from the module pages: it is server-rendered with
+> plain form POSTs and has **no JSON API**, which keeps the patient-facing data surface down to the
+> prepared statements in six files. Authorization is row-scoped (`require_patient()`), not
+> module-scoped (`require_module_access()`).
+
 ## Current architecture (as-is)
 
 Asclepius is a **server-rendered PHP application** with no framework. Each feature is a single

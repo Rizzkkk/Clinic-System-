@@ -4,7 +4,23 @@
 
 - **Runtime:** PHP (mysqli), no framework, no Composer dependencies.
 - **Database:** MySQL / MariaDB (`utf8mb4` / `utf8mb4_unicode_ci`).
-- **Hosting:** shared hosting (the committed DB user `u805024096_*` matches that pattern).
+- **Hosting:** **Hostinger KVM 2 VPS** (self-managed), with MySQL running on the same box, so
+  `DB_HOST=localhost` and no TLS/`DB_SSL_CA` is needed. This replaced an earlier Railway deploy.
+  Because the box is self-managed, HTTPS certificates, the firewall, OS patching and database
+  backups are now the application owner's responsibility - nothing in the repo does them.
+
+> **Web-server rules are a hard requirement on a VPS, not a nicety.** The repo protects
+> `backend/` (which holds `.env` and the schema) and `storage/` with `.htaccess`. **nginx ignores
+> `.htaccess` completely**, and Apache skips it unless the vhost sets `AllowOverride All`. Nothing
+> in the repo protects `/.git/` or `/dev/` at all. Get this wrong and the database password, the
+> full source, and PHI images are all fetchable over HTTP. See **S-16** in
+> [security.md](security.md), and verify with `curl` after every deploy:
+>
+> ```
+> curl -s -o /dev/null -w '%{http_code}\n' https://YOUR_DOMAIN/backend/config/.env   # want 403/404
+> curl -s -o /dev/null -w '%{http_code}\n' https://YOUR_DOMAIN/.git/config           # want 403/404
+> curl -s -o /dev/null -w '%{http_code}\n' https://YOUR_DOMAIN/dev/install.php       # want 403/404
+> ```
   Deployment is file-based (upload PHP files to the web root) — no build step.
 
 ## Local development setup

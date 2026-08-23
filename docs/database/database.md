@@ -16,14 +16,25 @@ All tables share: `id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY`,
 
 ## Tables
 
-### `users` — staff login accounts
+### `users` — login accounts (staff **and** patient portal)
 | Column | Type | Null | Notes |
 |--------|------|:----:|-------|
 | full_name | VARCHAR(150) | no | |
-| email | VARCHAR(191) | no | **UNIQUE** (`unique_users_email`) |
+| email | VARCHAR(191) | no | **UNIQUE** (`unique_users_email`) — the login identity |
 | password_hash | VARCHAR(255) | no | `password_hash()` output |
+| role | VARCHAR(20) | no | default `pending`. Staff: `admin`, `doctor`, `reception`, `lab`, `cashier`. Portal: `patient_pending`, `patient`, `patient_rejected`. Also the staff/patient discriminator — there is deliberately no separate `type` column, so the two can never disagree. |
+| patientId | INT UNSIGNED | yes | **UNIQUE** (`users_patient_uk`) → `patients(id)` `ON DELETE SET NULL`. NULL for every staff row and every unlinked signup. UNIQUE (which permits many NULLs) is what makes two accounts linking to one patient impossible. |
+| claimedDob | DATE | yes | What the portal applicant typed. An **unverified claim**, for reception to match against — never treated as identity. |
+| claimedPhone | VARCHAR(20) | yes | Same. |
+| linkedAt | DATETIME | yes | When reception approved the link. |
+| linkedBy | INT UNSIGNED | yes | → `users(id)` `ON DELETE SET NULL`. Who approved it. This plus `linkedAt` is the audit trail for the riskiest action in the system. |
 
-*Planned:* `role VARCHAR(20)` for RBAC — see [migrations.md](migrations.md).
+Invariant: `role = 'patient'` if and only if `patientId IS NOT NULL`. `require_patient()`
+(`backend/auth/portal.php`) re-checks it on every request and fails closed, so a patient record
+deleted out from under an account revokes that account rather than leaving it dangling.
+
+`patients.email` is deliberately **not** unique and is not a login identity — families share
+addresses, and portal users can edit it themselves.
 
 ### `doctors` — clinician directory
 | Column | Type | Null | Notes |

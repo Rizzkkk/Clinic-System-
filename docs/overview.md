@@ -8,8 +8,15 @@ patient records, the doctor directory, appointment scheduling, clinical/medical 
 laboratory results, prescriptions, and billing. It is a server-rendered PHP application
 backed by MySQL.
 
-It is **not** a patient-facing portal. All users are clinic staff; access is (today) a single
-shared login, moving to role-based access — see [requirements.md](requirements.md).
+Since the patient portal was added it also serves a **second, separate class of user**: a patient
+can sign in to a read-only view of their own records (appointments, lab results, prescriptions,
+bills), request an appointment, and update their own contact details. Staff access is role-based
+across the whole system; patient access is scoped to a single patient record. See
+[requirements.md](requirements.md) and [security.md](security.md).
+
+**Glossary additions:** a *portal account* is a `users` row with a `patient*` role; a *linked
+patient* is one whose portal account has been verified by reception and pointed at their
+`patients` row. Creating a portal account grants nothing until it is linked.
 
 ## Modules
 

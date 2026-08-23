@@ -6,6 +6,7 @@
       <a href="terms.php">Terms of use</a>
       <a href="faq.php">FAQs</a>
       <a href="index.php#contact">Contact us</a>
+      <a href="Portal.php">Patient portal</a>
       <a href="login.php">Staff login</a>
     </div>
     <div class="wrap footer-bottom">

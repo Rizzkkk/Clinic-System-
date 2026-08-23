@@ -1,8 +1,17 @@
 # Proposal: Patient Portal (self-service patient access)
 
-Status: **NOT approved — decision pending.** This is a proposal only. Nothing here is built.
-The owner is undecided on whether Asclepius should have a patient-facing portal; this document
-scopes it so the decision can be made deliberately.
+Status: **Approved and built (2026-08-23).** This document is kept as the record of *why* the portal
+was scoped the way it was; for how it actually works, see the "Row-level access (patient portal)"
+section of [../security.md](../security.md).
+
+The four decisions the owner had to make, as made:
+
+| Decision | Answer |
+|---|---|
+| Do patients log in at all? | **Yes**, by self-registering and then being verified by reception. |
+| Which data first? | **All four** - lab results, prescriptions, appointments, bills. |
+| Is appointment *requesting* in scope? | **Yes**, plus updating own contact details. |
+| How is the account stored? | On the existing `users` table (`role` + `patientId`), reusing login and `password_resets`.
 
 ## What it is
 
@@ -63,12 +72,28 @@ with its own plan, budget, and security review.
 If the owner wants to proceed, start with **Phase P-1 only** (foundation + one read-only view,
 e.g. lab results) behind a feature flag, get it security-reviewed, and expand from there.
 
-## Decision needed from the owner
+## What was built, against this scope
 
-- Do we want patients to log in at all? If yes, which data should they see first (lab results,
-  X-ray images, prescriptions, appointments, bills)?
-- Is appointment *requesting* in scope, or view-only for v1?
-- Any regulatory/consent constraints for the clinic's location?
+- **P-1 Foundation** - migration 010 (`users.patientId` + the three portal roles),
+  `backend/auth/portal.php` (`require_patient()`), the `bootstrap.php` chokepoint,
+  `Portal Register.php`, and reception's `Portal Accounts.php` review queue.
+- **P-2 Read-only views** - appointments, bills, prescriptions, and lab results, each scoped to the
+  signed-in patient.
+- **P-3 Light interaction** - request an appointment (creates `appointments.status = 'Requested'`
+  for reception to confirm; it is not a booking) and update own phone/email/address.
 
-Until these are answered, this stays parked. Referenced from `docs/system-status.md` under
-"decisions pending".
+## Deliberately deferred
+
+- **PDF downloads.** Patients cannot reach `backend/api/` at all, so the four existing PDF
+  endpoints and `xray_image.php` were left untouched. Portal pages carry a print stylesheet
+  instead. When PDFs are wanted, extract the builders and give the portal its own fetch with the
+  compound ownership `WHERE` - never add a `if (role === 'patient')` branch inside a staff
+  endpoint.
+- **X-ray images** - outside the four data types the owner chose.
+- Approval/confirmation emails, login rate limiting (S-9), a full patient-view audit log,
+  patient-initiated cancellation, and medical records / dental / psych in the portal.
+
+## Regulatory note (still open)
+
+The third original question - regulatory and consent constraints for the clinic's jurisdiction -
+was **not** a build decision and remains open for the clinic to answer before go-live.

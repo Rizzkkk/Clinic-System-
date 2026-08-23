@@ -83,6 +83,7 @@ All are in `backend/db/migrations/` and folded into the `schema.sql` baseline:
 | 006 | `change_users_role_default` | `users.role` default `admin` -> `pending` (security: self-registration no longer becomes admin). |
 | 007 | `add_doctor_signature` | `doctors.signaturePath` (JPG signature embedded in PDF reports). |
 | 008 | `add_remarks` | `remarks TEXT` on `laboratory_results`, `psych_sessions`, `xray_studies`. |
+| 010 | `add_patient_portal` | `users.patientId` (FK to `patients`, `ON DELETE SET NULL`, `UNIQUE`), `users.claimedDob` / `claimedPhone` (the applicant's unverified claim, for reception to match against), and `users.linkedAt` / `linkedBy` (who approved the link). Adds the `patient_pending` / `patient` / `patient_rejected` values to `users.role`. No backfill - existing staff rows keep their role and get NULLs. Appointment requests need no schema change: they are `appointments.status = 'Requested'`. |
 | 009 | `add_laboratory_result_items` | New `laboratory_result_items` child table (1 lab order → many tests, each with its own value/range/flag). Backfills one item per existing order; parent per-test columns kept but unused for new orders (non-destructive). |
 
 ## Suggested follow-up cleanups (not required for v1)

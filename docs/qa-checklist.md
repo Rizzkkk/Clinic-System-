@@ -108,3 +108,52 @@ enforced **both** client-side (browser bubble) and server-side (rejected before 
 For a full pass, the matrix can be split across subagents — e.g. one agent per role driving
 sections 2–4 for that role, or one agent per module for section 4 — each reporting Pass/Fail
 with the failing request. Synthesize the results and fix before sign-off.
+
+## 8. Patient portal
+
+The dominant risk is PHI leaking between patients, so section 8.2 is the one that must never be
+skipped. Seed **two** patients, each with data in all four modules, before starting.
+
+### 8.1 Account lifecycle
+- [ ] `Portal Register.php` rejects: blank fields, a name with digits, a bad email, a future date
+      of birth, a bad phone, a password under 8 characters, mismatched passwords, an unticked
+      confirmation box, and a duplicate email.
+- [ ] A successful signup creates `role = 'patient_pending'` with `patientId` NULL, and does **not**
+      sign the user in.
+- [ ] Signing in as that account lands on `Portal.php` and shows "Verification pending" — no records.
+- [ ] Reception's Portal Accounts page lists the signup with its claimed date of birth and phone,
+      and suggests matching patient records.
+- [ ] Approving links the account. The patient sees their records on the **next page load**,
+      without signing out and back in.
+- [ ] Rejecting shows the patient the "could not verify" screen.
+- [ ] Unlinking removes access on the next page load.
+- [ ] Linking a patient who already has a portal account is refused with a clear message.
+
+### 8.2 Cross-patient leak matrix (must pass before release)
+- [ ] Signed in as patient A, every one of `Portal.php`, `Portal Appointments.php`,
+      `Portal Results.php`, `Portal Prescriptions.php`, `Portal Billing.php`, `Portal Profile.php`
+      shows **only** A's data and **none** of patient B's. Use distinctive marker text in B's rows
+      so a leak is obvious.
+- [ ] As a `patient`, every staff page (Dashboard, Patient, Appointment, Prescription, Laboratory
+      Result, Billing, Portal Accounts, ...) redirects away.
+- [ ] As a `patient`, **every** file in `backend/api/` returns `403` JSON.
+- [ ] As staff, every `Portal*.php` page redirects to `Dashboard.php` (and does not loop).
+- [ ] Signed out, every `Portal*.php` page redirects to `login.php`.
+- [ ] Portal responses carry `Cache-Control: no-store, private`.
+
+### 8.3 Write paths
+- [ ] An appointment request is stored as `status = 'Requested'` and appears in the staff
+      Appointment page; the "Portal Requests" stat card counts it.
+- [ ] Reception confirming it (status → `Scheduled`) is reflected in the patient's view.
+- [ ] The staff `scheduled` / `completed` / `cancelled` counts are **not** inflated by requests.
+- [ ] A 4th open request is refused while 3 are outstanding.
+- [ ] Posting `patientId=<other patient>` or `status=Scheduled` in the request body is ignored: the
+      row lands on the signed-in patient with status `Requested`.
+- [ ] Updating contact details changes only the signed-in patient's phone/email/address.
+- [ ] Posting `firstName` / `dateOfBirth` / `allergies` to the profile form changes nothing.
+- [ ] A cross-origin POST to any portal form or to `portal_accounts.php` returns `403`.
+
+### 8.4 Output
+- [ ] Staff-entered free text containing `<script>` renders escaped in every portal view.
+- [ ] Empty states read sensibly for a patient with no records in a module.
+- [ ] Ctrl-P on a record page prints the table without the nav or the forms.

@@ -24,6 +24,9 @@ const MODULE_PERMISSIONS = [
     'psych_sessions'     => ['read' => ['doctor'],              'write' => ['doctor']],
     'xray_studies'       => ['read' => ['lab', 'doctor'],       'write' => ['lab']],
     'agency_referrals'   => ['read' => ['reception', 'doctor'], 'write' => ['reception', 'doctor']],
+    // Patient portal signups awaiting identity verification. Reception does the matching because
+    // they are the desk that already confirms who a walk-in is.
+    'portal_accounts'    => ['read' => ['reception'],           'write' => ['reception']],
 ];
 
 function current_role(): string

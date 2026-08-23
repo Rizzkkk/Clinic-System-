@@ -1,5 +1,101 @@
 # CHANGELOG - Walk-in Appointment Registration System
 
+## 2026-08-23 — Patient portal
+
+Patients can now sign in and see their own records. This is the first time the system has had a
+second, **untrusted** class of user, so the headline of this change is the access model, not the
+pages.
+
+### Added
+- **`backend/db/migrations/010_add_patient_portal.sql`** — `users.patientId` (UNIQUE, FK to
+  `patients` with `ON DELETE SET NULL`), `claimedDob` / `claimedPhone` (the applicant's unverified
+  claim), and `linkedAt` / `linkedBy` (who approved the link). No backfill. **Apply it before
+  deploying the code**, which reads those columns.
+- **`backend/auth/portal.php`** — the row-scoped access model. `require_patient(): int` returns the
+  one `patients.id` the session may read, or stops the request. It returns the id rather than
+  setting a global, so a query author has to hold it; skip the guard and there is nothing to bind.
+- **`backend/auth/roles.php`** — the three portal role values in one place, shared by
+  `bootstrap.php` and `login.php`.
+- **`Portal Register.php`** — public patient signup. Captures date of birth and mobile number so
+  reception has something to verify against; matching on name alone is how the wrong record gets
+  handed to the wrong person. Enforces an 8-character minimum password (partly closes S-9) and
+  deliberately does **not** create a session.
+- **`Portal Accounts.php` + `backend/api/portal_accounts.php`** — reception's review queue:
+  candidate matching, approve, reject, and **unlink** (the "we linked the wrong person" lever,
+  which revokes access on the account's next request).
+- **Portal pages** — `Portal.php` (summary tiles), `Portal Appointments.php` (list + request form),
+  `Portal Results.php`, `Portal Prescriptions.php`, `Portal Billing.php`, `Portal Profile.php`.
+- **`frontend/partials/portal-nav.php` / `portal-footer.php`, `frontend/assets/css/portal.css`** —
+  the portal shell, built on the public site's design system rather than the staff one. Includes a
+  print stylesheet, which is what stands in for PDF downloads in v1.
+
+### Changed
+- **`backend/auth/bootstrap.php`** — the role gate now has two branches. A portal role is allowed
+  through only when `ASCLEPIUS_PORTAL` is defined, which only `portal.php` does. That single
+  chokepoint keeps patient accounts out of all 16 `backend/api/*.php` handlers and every staff page
+  **without editing any of them**. Checking it before the staff branch also avoids a `rbac_deny()`
+  redirect loop back to `Dashboard.php`.
+- **`login.php`** — one login form for both classes; routes portal roles to `Portal.php`. Heading
+  is now "Sign in", with a link to the patient signup.
+- **`backend/auth/rbac.php`** — new `portal_accounts` module (reception + admin).
+- **`Appointment.php` / `backend/api/appointments.php`** — a "Portal Requests" stat card and a
+  `requested` count, so requests are actually visible to reception.
+- **`frontend/partials/public-header.php` / `public-footer.php`** — a Patient portal link, and an
+  optional `$extraStyles` hook so one public page can pull in extra CSS.
+
+### Fixed
+- **`login.php`** — `$_SESSION['user_role'] = $user['role'] ?? 'admin'` now defaults to `''`.
+  `role` is `NOT NULL` so it could not fire, but "unknown role defaults to superuser" must not
+  survive contact with internet-facing accounts.
+
+### Fixed in the pre-deployment audit pass
+- **Reception had no way to confirm a portal request.** The edit form re-posts the row's existing
+  status and the only other `update_status` caller hardcodes `'Completed'`, so a `Requested` row
+  could only be completed or deleted, never confirmed - and the "Portal Requests" tile counted
+  rows that could never be cleared. `Appointment.php` now renders a **Confirm** button on
+  `Requested` rows. (The endpoint always worked; there was simply no path to it from the UI.)
+- **Reject and unlink were a one-way door.** Both set `patient_rejected`, which no screen listed
+  and `approve` refused, so a mis-click permanently bricked a patient's login - they cannot
+  re-register either, because `users.email` is UNIQUE. Approve now accepts a rejected account and
+  the review queue lists them, labelled.
+- **Deleting a patient orphaned their portal account invisibly.** `get_linked` used an inner
+  `JOIN patients`, so the row vanished from reception's table while `get_stats` still counted it,
+  leaving an account that could not be unlinked or relinked. Now a `LEFT JOIN`, rendered as
+  "patient record deleted".
+- **Dates of birth could render a day early.** `new Date('1990-04-12')` parses as UTC midnight, so
+  `toLocaleDateString()` showed the previous day to any reviewer west of UTC - on the exact field
+  reception uses to confirm identity. Date-only columns now print verbatim.
+- **Unconfirmed requests inflated booking counts** in `get_stats` (`total`, `todayAppointments`)
+  and on the Dashboard, where they also dragged down the completed/total rate and appeared in the
+  recent-appointments list as if they were bookings.
+- **`appointments.status` was an unvalidated free string** on both write paths; now whitelisted.
+- **`mb_strlen` introduced an undeclared `ext-mbstring` dependency** (the only `mb_*` calls in the
+  repo) - it would have fataled on a PHP build without mbstring, the same shape as the earlier
+  `ext-mysqli` boot failure. Replaced with `strlen()`; these are byte caps, so no extension needed.
+- The portal time field accepted impossible values like `25:00`, which MySQL 8 strict mode rejects
+  outright; `schema.sql` is no longer safe to re-run (documented in its header); and a
+  double-escaped entity rendered a literal `&mdash;`.
+- **Clickjacking:** portal pages carry state-changing forms and were framable. `portal.php` now
+  sends `X-Frame-Options: DENY`, `frame-ancestors 'none'`, and `Referrer-Policy: same-origin`.
+
+### Notes
+- **Appointment requests reuse `appointments.status = 'Requested'`** rather than a new table. The
+  column shape already fits and reception's confirm flow already exists. Verified that `get_stats`
+  counts statuses by explicit literal, so `scheduled` / `completed` / `cancelled` cannot be
+  inflated.
+- **The portal has no JSON API by design** — server-rendered pages with plain form POSTs, so there
+  is no `?api=` endpoint a patient can call with a guessed record id.
+- **The four PDF endpoints and `xray_image.php` were not touched.** Patients cannot reach
+  `backend/api/` at all, so no ownership checks were needed there and no new file-serving surface
+  was created. X-ray images are out of v1.
+- **QA:** two seeded patients, zero cross-patient bleed across all four views; 16/16 API handlers
+  and every staff page denied to a patient account; forged `patientId` / `status` / identity fields
+  in write bodies ignored; approval applied without re-login and unlink revoked on the next
+  request; cross-origin POST blocked; staff-entered `<script>` rendered escaped.
+- **Still open:** login rate limiting and a staff password minimum (S-9), account enumeration on
+  signup (S-15, accepted), a full patient-view audit log, and the clinic's regulatory/consent
+  position on giving patients electronic access to their records.
+
 ## 2026-08-15 — Public site pages (privacy, terms, cookies, FAQ)
 
 ### Added

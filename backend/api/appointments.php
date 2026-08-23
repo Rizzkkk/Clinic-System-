@@ -3,7 +3,7 @@
 //   GET  ?api=get_appointments -> JSON array (joined to patient + doctor)
 //   GET  ?api=get_patients     -> JSON array (for the booking dropdown)
 //   GET  ?api=get_doctors      -> JSON array (for the booking dropdown)
-//   GET  ?api=get_stats        -> { total, scheduled, completed, cancelled, todayAppointments, pendingCheckins, todayPercentage }
+//   GET  ?api=get_stats        -> { total, scheduled, requested, completed, cancelled, todayAppointments, pendingCheckins, todayPercentage }
 //   POST action=add_appointment    -> { success, message }
 //   POST action=update_status (id, status)   -> { success }
 //   POST action=delete_appointment (id)      -> { success }
@@ -14,6 +14,11 @@ require_once __DIR__ . '/../auth/bootstrap.php';
 require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../auth/rbac.php';
 require_module_access('appointments');
+
+// The only statuses an appointment may hold. 'Requested' is a patient-portal request that
+// reception has not confirmed yet; it is deliberately NOT a booking, and every booking count in
+// get_stats excludes it.
+const APPOINTMENT_STATUSES = ['Requested', 'Scheduled', 'Completed', 'Cancelled'];
 
 // ----- Writes -------------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -47,6 +52,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($action === 'update_status') {
         $id     = (int) ($_POST['id'] ?? 0);
         $status = $_POST['status'] ?? '';
+        // Whitelisted since the patient portal renders this field: an unrecognized value would
+        // silently drop the appointment out of every filtered view, for staff and patient alike.
+        if (!in_array($status, APPOINTMENT_STATUSES, true)) {
+            json_fail('Unknown appointment status.');
+        }
         $stmt = $conn->prepare('UPDATE appointments SET status = ? WHERE id = ?');
         $stmt->bind_param('si', $status, $id);
 
@@ -65,6 +75,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $reason          = $_POST['reason'] ?? '';
         $notes           = $_POST['notes'] ?? '';
         $status          = $_POST['status'] ?? '';
+        if (!in_array($status, APPOINTMENT_STATUSES, true)) {
+            json_fail('Unknown appointment status.');
+        }
         if (!$id || !$doctorId || $appointmentDate === '' || $appointmentTime === '') {
             json_fail('Please provide the doctor, date, and time.');
         }
@@ -131,17 +144,22 @@ if ($api === 'get_doctors') {
 }
 
 if ($api === 'get_stats') {
-    $total             = (int) $conn->query('SELECT COUNT(*) AS c FROM appointments')->fetch_assoc()['c'];
+    // 'Requested' rows are unconfirmed portal requests, not bookings, so they are excluded from
+    // every booking count and reported separately as $requested below.
+    $total             = (int) $conn->query("SELECT COUNT(*) AS c FROM appointments WHERE status <> 'Requested'")->fetch_assoc()['c'];
     $scheduled         = (int) $conn->query("SELECT COUNT(*) AS c FROM appointments WHERE status = 'Scheduled'")->fetch_assoc()['c'];
     $completed         = (int) $conn->query("SELECT COUNT(*) AS c FROM appointments WHERE status = 'Completed'")->fetch_assoc()['c'];
     $cancelled         = (int) $conn->query("SELECT COUNT(*) AS c FROM appointments WHERE status = 'Cancelled'")->fetch_assoc()['c'];
-    $todayAppointments = (int) $conn->query('SELECT COUNT(*) AS c FROM appointments WHERE DATE(appointmentDate) = CURDATE()')->fetch_assoc()['c'];
+    // Patient portal requests waiting for reception to confirm them into a real booking.
+    $requested         = (int) $conn->query("SELECT COUNT(*) AS c FROM appointments WHERE status = 'Requested'")->fetch_assoc()['c'];
+    $todayAppointments = (int) $conn->query("SELECT COUNT(*) AS c FROM appointments WHERE DATE(appointmentDate) = CURDATE() AND status <> 'Requested'")->fetch_assoc()['c'];
     $pendingCheckins   = (int) $conn->query("SELECT COUNT(*) AS c FROM appointments WHERE status = 'Scheduled' AND DATE(appointmentDate) = CURDATE()")->fetch_assoc()['c'];
     $todayPercentage   = $total > 0 ? (int) round(($todayAppointments / $total) * 100) : 0;
 
     json_response([
         'total'             => $total,
         'scheduled'         => $scheduled,
+        'requested'         => $requested,
         'completed'         => $completed,
         'cancelled'         => $cancelled,
         'todayAppointments' => $todayAppointments,

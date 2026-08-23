@@ -121,17 +121,34 @@ Remaining in Phase 1:
   table + `backend/api/<module>.php` CRUD + a functional page (patient dropdown, add form, list)
   replacing each static stub, RBAC-gated. QA'd (admin CRUD; RBAC blocks; pages load clean).
 
+### Phase 5 — Patient portal (done)
+Patients can sign in to their own records. See [proposals/patient-portal.md](proposals/patient-portal.md)
+for the scope decisions and [security.md](security.md) for the access model.
+- [x] Migration 010 — `users.patientId` + the three portal roles + the audit columns
+- [x] `backend/auth/portal.php` — `require_patient()`, the row-scoped access model
+- [x] `bootstrap.php` chokepoint — one check keeps patients out of every staff page and API handler
+- [x] `Portal Register.php` (public signup) + reception's `Portal Accounts.php` review queue
+- [x] Read views — appointments, bills, prescriptions, lab results, each scoped to the patient
+- [x] Writes — request an appointment (`status = 'Requested'`), update own contact details
+- [x] Leak matrix QA — two patients, zero cross-patient bleed; 16/16 API handlers denied
+- [ ] *Deferred:* PDF downloads, X-ray images, approval emails, login rate limiting (S-9),
+      a full patient-view audit log
+
 ### Phase 4 — Production go-live
 Full checklist in [production-release.md](production-release.md). Headlines:
 - [ ] Delete `install.php` / `add_table.php` / `start-local-server.bat` from the server
 - [ ] Create server `backend/config/.env`; **rotate the DB password** (it's in git history)
 - [ ] HTTPS · secure session cookies · `display_errors` off · DB backups
+- [ ] **Apply migration 010 before deploying the portal code** — it is applied by hand, and the
+      portal reads columns that do not exist until it runs
+- [ ] Re-run the portal leak matrix (qa-checklist section 8.2) against the deployed environment
+- [ ] Brief reception: verify identity by phone or in person **before** linking a portal account
 
 ---
 
 ## 4. How to continue (next session)
 1. Read this file + [backend-plan.md](backend-plan.md) (migration pattern) + the auto-memory.
-2. Pick the next todo item (currently: CSRF).
+2. Pick the next todo item (currently: Phase 4 go-live).
 3. Make the change → **QA it** with the smoke test in [deployment.md](deployment.md) (don't stop at `php -l`).
 4. Update this checklist + `CHANGELOG.md` in the same change.
 

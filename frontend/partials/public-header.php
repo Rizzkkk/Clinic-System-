@@ -1,9 +1,12 @@
 <?php
 // Shared header for public website pages (landing, privacy, terms, etc.).
 // Expects $clinic (from clinic_info()) and optional $pageTitle, $metaDescription.
+// $extraStyles lets one page pull in an additional stylesheet (the patient signup form needs
+// portal.css) without loading it on every marketing page.
 
 $pageTitle = $pageTitle ?? 'ASCLEPIUS Medical & Diagnostic Group Inc.';
 $metaDescription = $metaDescription ?? 'Asclepius Medical and Diagnostic Group Inc.';
+$extraStyles = $extraStyles ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -14,6 +17,9 @@ $metaDescription = $metaDescription ?? 'Asclepius Medical and Diagnostic Group I
   <title><?php echo htmlspecialchars($pageTitle, ENT_QUOTES, 'UTF-8'); ?></title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="frontend/assets/css/landing.css">
+<?php foreach ($extraStyles as $href): ?>
+  <link rel="stylesheet" href="<?php echo htmlspecialchars($href, ENT_QUOTES, 'UTF-8'); ?>">
+<?php endforeach; ?>
 </head>
 <body>
 
@@ -34,7 +40,12 @@ $metaDescription = $metaDescription ?? 'Asclepius Medical and Diagnostic Group I
         <a href="index.php#services">Services</a>
         <a href="index.php#about">About us</a>
         <a href="index.php#contact">Contact</a>
+<?php if (($_SESSION['user_role'] ?? '') === 'patient'): ?>
+        <a href="Portal.php" class="nav-cta">My portal</a>
+<?php else: ?>
+        <a href="Portal.php">Patient portal</a>
         <a href="login.php" class="nav-cta">Staff login</a>
+<?php endif; ?>
       </nav>
       <button type="button" class="nav-toggle" aria-label="Open menu" aria-expanded="false">Menu</button>
     </div>

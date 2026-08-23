@@ -135,7 +135,7 @@ $canWriteAppt = can_access('appointments', 'write');
 </header>
 <main class="ml-sidebar p-gutter flex flex-col gap-gutter">
 <!-- Metrics Bento Grid -->
-<section class="grid grid-cols-1 md:grid-cols-3 gap-card-gap">
+<section class="grid grid-cols-1 md:grid-cols-4 gap-card-gap">
 <div class="bg-surface-container-lowest border border-outline-variant/30 p-6 rounded-xl flex items-center gap-4 transition-transform hover:scale-[1.01]">
 <div class="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary">
 <span class="material-symbols-outlined">event_note</span>
@@ -164,6 +164,16 @@ $canWriteAppt = can_access('appointments', 'write');
 <div>
 <p class="text-label-caps text-on-surface-variant mb-1 uppercase">Finish Patient</p>
 <h3 class="text-headline-lg font-headline-lg text-on-surface" id="cancellationsCount">0</h3>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/30 p-6 rounded-xl flex items-center gap-4 transition-transform hover:scale-[1.01]">
+<div class="w-12 h-12 bg-tertiary/10 rounded-full flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">pending_actions</span>
+</div>
+<div>
+<p class="text-label-caps text-on-surface-variant mb-1 uppercase">Portal Requests</p>
+<h3 class="text-headline-lg font-headline-lg text-on-surface" id="requestedCount">0</h3>
+<p class="text-label-caps text-on-surface-variant">Awaiting confirmation</p>
 </div>
 </div>
 </section>
@@ -400,6 +410,8 @@ $canWriteAppt = can_access('appointments', 'write');
             const safePatientName = escapeHtml(patientName || 'Unknown patient');
             const safeDoctorName = escapeHtml(doctorName || 'Unknown doctor');
             const safeStatusLabel = escapeHtml(statusLabel);
+            // A patient-portal request is not a booking until reception confirms it.
+            const isRequest = statusLabel === 'Requested';
             const safeAppointmentTime = escapeHtml(appointment.appointmentTime || '--:--');
             const safeAppointmentId = escapeHtml(appointment.id);
 
@@ -409,10 +421,11 @@ $canWriteAppt = can_access('appointments', 'write');
                     <td class="px-6 py-4 text-body-sm font-semibold text-on-surface">${safePatientName}</td>
                     <td class="px-6 py-4 text-body-sm text-on-surface-variant">${safeDoctorName}</td>
                     <td class="px-6 py-4 text-body-sm">
-                        <span class="inline-flex rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary">${safeStatusLabel}</span>
+                        <span class="inline-flex rounded-full px-3 py-1 text-[11px] font-semibold ${isRequest ? 'bg-tertiary/20 text-tertiary' : 'bg-primary/10 text-primary'}">${safeStatusLabel}</span>
                     </td>
                     <td class="px-6 py-4 text-right text-body-sm text-on-surface-variant">
                         <div class="flex gap-2 justify-end">
+                            ${isRequest && CAN_WRITE_APPT ? `<button type="button" class="inline-flex items-center justify-center rounded-lg bg-primary px-3 py-2 text-[12px] font-semibold text-on-primary hover:opacity-90 transition-opacity" data-confirm-appointment-id="${safeAppointmentId}" data-patient-name="${safePatientName}">Confirm</button>` : ''}
                             ${CAN_WRITE_APPT ? `<button type="button" class="inline-flex items-center justify-center rounded-lg bg-surface-container px-3 py-2 text-[12px] font-semibold text-on-surface-variant hover:bg-surface-container-high transition-colors" data-edit-appointment-id="${safeAppointmentId}">Edit</button>` : ''}
                             <button type="button" class="inline-flex items-center justify-center rounded-lg bg-primary/10 px-3 py-2 text-[12px] font-semibold text-primary hover:bg-primary/20 transition-colors" data-remove-appointment-id="${safeAppointmentId}" data-patient-name="${safePatientName}">
                                 Finish Patient
@@ -530,7 +543,45 @@ $canWriteAppt = can_access('appointments', 'write');
             }
         }
 
+        // Turns a patient-portal request into a real booking. The patient sees the status change on
+        // their next page load; nothing else about the row is altered.
+        async function confirmAppointmentRequest(appointmentId, patientName) {
+            if (!appointmentId) {
+                return;
+            }
+            if (!confirm(`Confirm the appointment request for ${patientName}?`)) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('action', 'update_status');
+            formData.append('id', appointmentId);
+            formData.append('status', 'Scheduled');
+
+            try {
+                const response = await fetch('Appointment.php', { method: 'POST', body: formData });
+                const result = await response.json();
+                if (result.success) {
+                    await loadAppointmentTables();
+                    await loadMetrics();
+                } else {
+                    showError(result.message || 'Could not confirm the request.');
+                }
+            } catch (error) {
+                console.error('Error confirming appointment request:', error);
+                showError('Could not confirm the request.');
+            }
+        }
+
         function handleAppointmentTableClick(event) {
+            const confirmButton = event.target.closest('[data-confirm-appointment-id]');
+            if (confirmButton) {
+                confirmAppointmentRequest(
+                    confirmButton.getAttribute('data-confirm-appointment-id'),
+                    confirmButton.getAttribute('data-patient-name') || 'this patient'
+                );
+                return;
+            }
             const editButton = event.target.closest('[data-edit-appointment-id]');
             if (editButton) {
                 editAppointment(editButton.getAttribute('data-edit-appointment-id'));
@@ -1097,6 +1148,7 @@ $canWriteAppt = can_access('appointments', 'write');
                 const todayPercentageValue = document.getElementById('todayPercentageValue');
                 const pendingCheckinsCount = document.getElementById('pendingCheckinsCount');
                 const cancellationsCount = document.getElementById('cancellationsCount');
+                const requestedCount = document.getElementById('requestedCount');
                 
                 if (todayAppointmentsCount) {
                     todayAppointmentsCount.textContent = stats.todayAppointments;
@@ -1112,6 +1164,12 @@ $canWriteAppt = can_access('appointments', 'write');
                 
                 if (cancellationsCount) {
                     cancellationsCount.textContent = stats.completed;
+                }
+
+                // Patient-portal requests land in the list below with status 'Requested'; reception
+                // turns one into a real booking by editing it and setting the status to Scheduled.
+                if (requestedCount) {
+                    requestedCount.textContent = stats.requested ?? 0;
                 }
             } catch (error) {
                 console.error('Error loading metrics:', error);

@@ -9,7 +9,9 @@ $labResultsCount = $conn->query('SELECT COUNT(*) as count FROM laboratory_result
 
 // Additional metrics for dashboard
 $completedAppointments = $conn->query('SELECT COUNT(*) as count FROM appointments WHERE status = "Completed"')->fetch_assoc()['count'];
-$totalAppointments = $conn->query('SELECT COUNT(*) as count FROM appointments')->fetch_assoc()['count'];
+// Excludes unconfirmed patient-portal requests: they are not bookings, and counting them would
+// drag down the completed/total "accuracy rate" below.
+$totalAppointments = $conn->query('SELECT COUNT(*) as count FROM appointments WHERE status <> "Requested"')->fetch_assoc()['count'];
 $pendingReviews = $conn->query('SELECT COUNT(*) as count FROM laboratory_results WHERE abnormalFlag = "Y"')->fetch_assoc()['count'];
 $accuracyRate = $totalAppointments > 0 ? round(($completedAppointments / $totalAppointments) * 100) : 0;
 
@@ -20,6 +22,7 @@ $result = $conn->query('
     FROM appointments a 
     JOIN patients p ON a.patientId = p.id 
     JOIN doctors d ON a.doctorId = d.id 
+    WHERE a.status <> "Requested"
     ORDER BY a.appointmentDate DESC 
     LIMIT 5
 ');

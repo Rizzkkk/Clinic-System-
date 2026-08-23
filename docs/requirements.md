@@ -8,6 +8,11 @@ working modules, the planned (stub) modules, and the move to role-based access.
 Today the system has a **single shared login** (one `users` table, no roles). Production
 introduces **role-based access control (RBAC)**. Confirmed roles:
 
+> **Note:** the roles below are all *staff*. The patient portal adds a second, untrusted class of
+> account (`patient`, `patient_pending`, `patient_rejected`) that is **row-scoped, not
+> module-scoped** - a patient sees only their own records, enforced by `require_patient()` rather
+> than by the RBAC matrix. See [security.md](security.md).
+
 | Role | Primary responsibility | Modules (intended) |
 |------|------------------------|--------------------|
 | `admin` | Full system access, user management, configuration. | All. |
@@ -50,6 +55,10 @@ contracts are in [api-reference.md](api-reference.md).
 | FR-14 | Agency referral | **Clarify the feature first** (current page content mismatches its name). Likely: track referrals of a patient to external partners (`agency_referrals`). |
 | FR-15 | Password reset | Token-based password reset with expiry (`password_resets`), replacing the current client-only flow. |
 | FR-16 | PDF lab results | Export a laboratory result as a downloadable PDF, generatable from **both** the doctor view and the lab-technician view. Needs the Lab module migrated, a PHP PDF library (e.g. Dompdf/FPDF), and RBAC so `doctor` + `lab` can access it. |
+| FR-18 | Patient portal accounts | Patients self-register at `Portal Register.php` (name, email, date of birth, mobile, password). The account is created with no access; reception verifies identity and links it to exactly one `patients` row in `Portal Accounts.php`, and can reject or later unlink it. |
+| FR-19 | Patient portal views | A verified patient sees **only their own** appointments, laboratory results (including the grouped test items), prescriptions, and bills. |
+| FR-20 | Appointment request | A patient may ask for an appointment (doctor, preferred date/time, reason). It is stored as `appointments.status = 'Requested'` for reception to confirm - it is **not** a booking. Capped at 3 open requests per patient. |
+| FR-21 | Self-service contact update | A patient may update their own phone, email, and address. Identity and clinical fields stay read-only. |
 | FR-17 | Staff directories | Manage staff per role on **three separate pages** — Lab Technicians, Cashiers, Receptionists — each a registry (add/list/edit/delete) modeled on the Doctor directory. Each role doubles as the login access level (RBAC). See [database/erd.md](database/erd.md) for the data model. |
 
 ## Non-functional requirements
@@ -67,7 +76,6 @@ contracts are in [api-reference.md](api-reference.md).
 
 ## Out of scope (production v1)
 
-- Patient-facing portal.
 - Automated test suite (planned follow-up).
 - Per-user audit logging and reporting/analytics beyond the dashboard counts.
 - Building the planned stub modules' backends (designed only — see [database/migrations.md](database/migrations.md)).

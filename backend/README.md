@@ -48,6 +48,15 @@ $canWriteDoctor = can_access('doctors', 'write');
 Handlers respond with `json_ok()` / `json_fail()` / `json_response()`; writes use prepared
 statements and log real DB errors server-side while returning a safe message to the client.
 
+## Auth files
+
+| File | Does |
+|------|------|
+| `auth/roles.php` | Names the three patient-portal role values in one place (`PORTAL_ROLES`). Included by both `bootstrap.php` and `login.php`. |
+| `auth/bootstrap.php` | Session, `$conn`, the same-origin CSRF check, the login guard, then the role gate. The gate has two branches: portal roles are allowed only when `ASCLEPIUS_PORTAL` is defined, and staff need a recognized role. |
+| `auth/rbac.php` | **Module-scoped** staff permissions: `can_access()`, `require_module_access()`. |
+| `auth/portal.php` | **Row-scoped** patient access: `require_patient(): int` returns the one `patients.id` the session may read, or stops the request. Defines `ASCLEPIUS_PORTAL` before including `bootstrap.php`. Deliberately separate from `rbac.php` — the two models must not be mixed. |
+
 ## Conventions (refactor-in-place)
 
 - One canonical schema in `db/schema.sql` — not redefined per page, never run as DDL on request.

@@ -3,7 +3,8 @@
 Asclepius is a web-based **medical & diagnostic clinic management system** (PHP + MySQL)
 for Asclepius Medical & Diagnostic Group Inc. It manages patients, doctors, appointments,
 medical records, laboratory results, prescriptions, and billing through a staff-facing web
-app.
+app. It also has a **patient portal**: a separate, read-mostly surface where a patient can sign in
+to see their own records.
 
 This `docs/` folder is the **source of truth** for the system. It was created as Phase 0 of
 the production-readiness effort: organize the codebase and document it *before* refactoring
@@ -35,6 +36,7 @@ the working-but-spaghetti PHP pages into a clean `frontend/` + `backend/` struct
 | [database/database.md](database/database.md) | Canonical schema reference (tables, columns, constraints, indexes). |
 | [database/erd.md](database/erd.md) | Entity-relationship diagram (Mermaid) + relationship narrative. |
 | [database/migrations.md](database/migrations.md) | Resolves the 3-way schema divergence; specifies planned tables for the stub modules. |
+| [proposals/patient-portal.md](proposals/patient-portal.md) | Patient portal — the scope decisions behind it, what was built, and what was deliberately deferred. |
 
 ## Reading order for a new developer
 

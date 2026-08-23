@@ -1,5 +1,27 @@
 # API Reference
 
+> **The patient portal has no JSON API, by design.** `Portal*.php` are server-rendered pages with
+> plain form POSTs, so there is no `?api=` endpoint a patient could call with a guessed record id.
+> The entire patient-facing data surface is the prepared statements inside those files. See the
+> "Row-level access" section of [security.md](security.md). The one portal-related API below is
+> **staff-facing**: reception's account-approval screen.
+
+## `backend/api/portal_accounts.php` (reception + admin)
+
+Reads return a bare JSON array; writes return `{success, message}`.
+
+| Call | Does |
+|------|------|
+| `GET ?api=get_pending` | Signups awaiting review (`role = 'patient_pending'`), oldest first. |
+| `GET ?api=get_candidates&userId=` | `patients` rows matching the applicant's claimed date of birth, phone, or email, each flagged `alreadyLinked`. Suggestions for a human to check - never an automatic match. |
+| `GET ?api=search_patients&q=` | Free-text fallback when nothing auto-matches. |
+| `GET ?api=get_linked` | Approved accounts with the patient they point at and who linked them. |
+| `GET ?api=get_stats` | `{ pending, linked }`. |
+| `POST action=approve` (`userId`, `patientId`) | Links the account. Guarded by `AND role = 'patient_pending'`, so it cannot re-point an approved account or touch a staff row. `UNIQUE(users.patientId)` returns a clear message on a duplicate link. |
+| `POST action=reject` (`userId`) | Marks a pending signup `patient_rejected`. |
+| `POST action=unlink` (`userId`) | Clears the link on an approved account. Takes effect on that account's next request. |
+
+
 Documents the **existing** in-page JSON API so the refactor (see
 [backend-plan.md](backend-plan.md)) preserves the contract. Each working module's `*.php`
 page is also its own endpoint: it answers `GET ?api=...` for reads and `POST` with an

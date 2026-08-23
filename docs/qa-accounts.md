@@ -8,7 +8,11 @@ A guide for visually QA-ing Asclepius as a doctor, receptionist, lab tech, cashi
   `lab`, `cashier`. The role decides what the account can see and do.
 - **Directory records** (a doctor in the Doctor page, a patient in the Patient page, a lab
   technician, etc.) are **data, not logins**. A doctor you add on the Doctor page **cannot log
-  in** — it is just a record. **Patients never log in** at all.
+  in** — it is just a record.
+- **Patients can now log in, but only via a linked portal account.** A `patients` row is still just
+  a record. A *portal account* is a separate `users` row with role `patient`, pointed at exactly
+  one `patients` row by `users.patientId`. Creating either one alone gives access to nothing: the
+  patient must sign up **and** be linked by reception. See "Create a patient portal account" below.
 - **Sign-up creates a no-access account.** `register.php` now creates the account with role
   **`pending`** (it cannot see anything until an admin assigns a real role). This closed a security
   hole where self-registration previously became an **admin**. To grant access, set the account's
@@ -28,6 +32,42 @@ The local database already has one login per role. **Password for all: `test1234
 
 Log in at `http://localhost:8000/login.php`. (If they're missing — e.g. a fresh DB — create
 them with "Create a login for a role" below.)
+
+## Create a patient portal account (for QA)
+
+The portal is deliberately two-step, so QA has to do both steps.
+
+1. **Sign up as the patient.** Open `Portal Register.php` (linked from the login page and the
+   public site nav). Enter a name, email, **date of birth**, **mobile number**, and a password of
+   at least 8 characters, and tick the confirmation box. This creates a `patient_pending` account
+   and does **not** sign you in.
+2. **Approve as reception.** Sign in as `reception@test.com`, open **Portal Accounts** in the
+   sidebar, pick the signup, and link it to a `patients` row. Candidates are matched on the claimed
+   date of birth, phone, or email; use the search box if nothing matches.
+3. **Sign in as the patient** at `login.php`. You land on `Portal.php`.
+
+To make step 2 find a candidate, give a patient record a matching date of birth and phone first
+(Patient page, or SQL).
+
+**Shortcut for a throwaway QA fixture** — sign up through the form, then link it directly:
+
+```sql
+UPDATE users
+   SET role = 'patient', patientId = 1, linkedAt = NOW(), linkedBy = 1
+ WHERE email = 'your.signup@example.com' AND role = 'patient_pending';
+```
+
+**What to expect at each state** (all three states can sign in):
+
+| `users.role` | What the patient sees |
+|---|---|
+| `patient_pending` | "Verification pending" screen. No records, and no PHI query runs. |
+| `patient` | The portal: their own appointments, results, prescriptions, bills. |
+| `patient_rejected` | "We could not verify your account" screen. |
+
+Revoking is `action=unlink` on the Portal Accounts page, and takes effect on the patient's **next
+page load** — they do not have to be logged out, because the link is read from the database on
+every request.
 
 ## Create a login for a specific role
 

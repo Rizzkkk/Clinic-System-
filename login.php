@@ -4,11 +4,21 @@ asclepius_start_session();
 
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/backend/config/clinic.php';
+require_once __DIR__ . '/backend/auth/roles.php';
 
+// Staff and patients share this one form but belong in different applications, so an
+// already-signed-in visitor is sent to whichever one is theirs.
 $validRoles = ['admin', 'doctor', 'reception', 'lab', 'cashier'];
-if (isset($_SESSION['user_id']) && in_array($_SESSION['user_role'] ?? '', $validRoles, true)) {
-  header('Location: Dashboard.php');
-  exit;
+if (isset($_SESSION['user_id'])) {
+  $sessionRole = $_SESSION['user_role'] ?? '';
+  if (in_array($sessionRole, $validRoles, true)) {
+    header('Location: Dashboard.php');
+    exit;
+  }
+  if (in_array($sessionRole, PORTAL_ROLES, true)) {
+    header('Location: Portal.php');
+    exit;
+  }
 }
 
 $clinic = clinic_info();
@@ -31,8 +41,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
       session_regenerate_id(true);
       $_SESSION['user_id'] = $user['id'];
       $_SESSION['user_name'] = $user['full_name'];
-      $_SESSION['user_role'] = $user['role'] ?? 'admin';
-      header('Location: Dashboard.php');
+      // Never default an unknown role to 'admin'. role is NOT NULL so this cannot fire today,
+      // but these accounts are now internet-facing and must fail closed, not open.
+      $_SESSION['user_role'] = $user['role'] ?? '';
+      // A patient_pending / patient_rejected account still lands on Portal.php; require_patient()
+      // there shows them their verification status instead of any records.
+      $isPortalAccount = in_array($user['role'] ?? '', PORTAL_ROLES, true);
+      header('Location: ' . ($isPortalAccount ? 'Portal.php' : 'Dashboard.php'));
       exit;
     }
 
@@ -64,7 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
         </div>
       </div>
 
-      <h1 class="login-title">Staff login</h1>
+      <h1 class="login-title">Sign in</h1>
 
       <form method="post" action="" autocomplete="on">
         <div class="input-group">
@@ -92,8 +107,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
       </form>
 
       <div class="create-account">
-        <span>Need an account?</span>
-        <a href="register.php">Create account</a>
+        <span>Clinic staff need an account?</span>
+        <a href="register.php">Create staff account</a>
+      </div>
+
+      <div class="create-account">
+        <span>Are you a patient?</span>
+        <a href="Portal Register.php">Create a patient account</a>
       </div>
     </div>
   </main>

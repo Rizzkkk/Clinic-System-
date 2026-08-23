@@ -7,6 +7,7 @@
 //
 // Replaces the copy-pasted session_start() + require db.php + login-guard block.
 
+require_once __DIR__ . '/roles.php';
 require_once __DIR__ . '/../lib/session.php';
 asclepius_start_session();
 
@@ -52,15 +53,37 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Accounts without a recognized staff role (e.g. self-registered 'pending' users) get NO access
-// until an administrator assigns a real role. This also keeps them off the Dashboard.
+// Two mutually exclusive classes of account reach this point: clinic staff and portal patients.
+//
+// Patients may only reach files that went through backend/auth/portal.php, which defines
+// ASCLEPIUS_PORTAL before including this file. That one check is what keeps patient accounts out
+// of every backend/api/*.php handler and every staff page without editing any of them. Checking
+// it before the staff-role branch also avoids a redirect loop: a patient hitting Dashboard.php
+// would otherwise fall through to rbac_deny(), which redirects to Dashboard.php.
+//
+// Staff without a recognized role (e.g. self-registered 'pending' users) get NO access until an
+// administrator assigns a real role. This also keeps them off the Dashboard.
 $validRoles = ['admin', 'doctor', 'reception', 'lab', 'cashier'];
-if (!in_array($_SESSION['user_role'] ?? '', $validRoles, true)) {
-    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
-    $isApiRequest = !empty($_GET['api'])
-        || $_SERVER['REQUEST_METHOD'] === 'POST'
-        || strpos($scriptName, '/backend/api/') !== false;
+$currentRole = $_SESSION['user_role'] ?? '';
 
+$scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+$isApiRequest = !empty($_GET['api'])
+    || $_SERVER['REQUEST_METHOD'] === 'POST'
+    || strpos($scriptName, '/backend/api/') !== false;
+
+if (in_array($currentRole, PORTAL_ROLES, true)) {
+    if (!defined('ASCLEPIUS_PORTAL')) {
+        if ($isApiRequest) {
+            http_response_code(403);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'You do not have access to this resource.']);
+            exit;
+        }
+
+        header('Location: Portal.php');
+        exit;
+    }
+} elseif (!in_array($currentRole, $validRoles, true)) {
     if ($isApiRequest) {
         http_response_code(403);
         header('Content-Type: application/json; charset=utf-8');

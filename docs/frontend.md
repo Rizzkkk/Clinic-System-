@@ -1,5 +1,28 @@
 # Frontend
 
+## Patient portal (separate surface)
+
+The portal deliberately reuses the **public website's** design system, not the staff one: patients
+should never see clinic-staff chrome, and `landing.css` already provides the layout primitives a
+record page needs.
+
+| | Staff module pages | Patient portal |
+|---|---|---|
+| CSS | Tailwind CDN + per-page config | `landing.css` + `portal.css` |
+| Font | Inter / Manrope + Material Symbols | Poppins |
+| Chrome | `frontend/partials/sidebar.php` (260px, role-filtered) | `frontend/partials/portal-nav.php` + `portal-footer.php` (horizontal strip) |
+| Data flow | server-rendered shell + `fetch()` against `?api=` | server-rendered, plain form POST |
+
+Pages: `Portal.php` (home + summary tiles), `Portal Appointments.php` (list + request form),
+`Portal Results.php`, `Portal Prescriptions.php`, `Portal Billing.php`, `Portal Profile.php`
+(read-only identity + editable contact details), and the public `Portal Register.php`.
+`Portal Accounts.php` is reception's approval screen and is a **staff** page, so it uses the staff
+system and the sidebar.
+
+`portal.css` also carries a **print stylesheet**: v1 has no PDF downloads, so Ctrl-P on a record
+page is the supported way for a patient to keep a copy. Feedback uses the same SweetAlert2 overlay
+convention as `login.php` / `register.php`, never an inline message box.
+
 ## Design system (current)
 
 The root `*.php` pages are the **view layer** (served at the web root); shared markup lives in

@@ -18,7 +18,12 @@ erDiagram
         varchar email UK
         varchar password_hash
         varchar full_name
-        varchar role "planned: admin|doctor|lab|cashier|reception"
+        varchar role "staff: admin|doctor|lab|cashier|reception -- portal: patient_pending|patient|patient_rejected"
+        int patientId FK "UK, nullable -- set only for a linked portal account"
+        date claimedDob "portal signup: unverified claim, for reception to match"
+        varchar claimedPhone "portal signup: unverified claim"
+        datetime linkedAt
+        int linkedBy FK "which staff account approved the link"
     }
     doctors {
         int id PK
@@ -131,6 +136,7 @@ erDiagram
     }
 
     users          ||--o{ password_resets    : "requests"
+    users          |o--o| patients           : "portal account for (0..1, UNIQUE)"
     patients       ||--o{ patient_contacts   : "has"
     patients       ||--o{ appointments       : "has"
     doctors        ||--o{ appointments       : "attends"
@@ -180,6 +186,12 @@ erDiagram
    `role` column** feeding three filtered pages (one schema, easy to add roles, simple
    accountability FKs). I've drawn it as **separate tables** per your decision — say the word
    and I'll collapse them into a unified `staff` table instead.
+
+2b. **Portal accounts.** `users |o--o| patients` is the one optional, at-most-one-each-way link in
+   the model. A staff row has `patientId NULL`; a linked portal account points at exactly one
+   patient, enforced by `UNIQUE(users.patientId)`. `ON DELETE SET NULL` means deleting a patient
+   record breaks the link rather than deleting the login, and `require_patient()` then fails closed
+   for that account. See [../security.md](../security.md).
 
 2. **Logins vs people.** `users` (login accounts) are separate from the staff directories
    (`doctors`, `lab_technicians`, …). For production, add `users.role` for access control. If you

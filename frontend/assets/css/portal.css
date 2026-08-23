@@ -1,0 +1,377 @@
+/* Patient portal styles. Loaded AFTER landing.css, which supplies the Poppins body font, the
+   colour custom properties (--teal-dark, --ink, --muted, ...), .wrap, .btn and .btn-primary.
+   Only what the public site does not already provide lives here: the portal nav strip, record
+   tables, status pills, forms, and the print rules that stand in for PDF downloads in v1. */
+
+.portal-body {
+  background: var(--surface);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---- top nav ------------------------------------------------------------ */
+
+.portal-header {
+  background: var(--teal-dark);
+  color: var(--white);
+}
+
+.portal-header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+}
+
+.portal-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--white);
+  text-decoration: none;
+}
+
+.portal-brand img {
+  height: 38px;
+  width: auto;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 3px;
+}
+
+.portal-brand span {
+  font-weight: 700;
+  font-size: 0.95rem;
+  line-height: 1.2;
+}
+
+.portal-who {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.portal-nav {
+  background: #005249;
+}
+
+.portal-nav-inner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.35rem 0;
+}
+
+.portal-nav a {
+  color: rgba(255, 255, 255, 0.78);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+}
+
+.portal-nav a:hover {
+  color: var(--white);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.portal-nav a.is-active {
+  color: var(--white);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.portal-nav a.portal-signout {
+  margin-left: auto;
+  color: #ffc9c9;
+}
+
+/* ---- page shell --------------------------------------------------------- */
+
+.portal-main {
+  flex: 1;
+  padding: 2rem 0 3rem;
+}
+
+.portal-main h1 {
+  font-size: 1.6rem;
+  color: var(--teal-dark);
+  margin-bottom: 0.35rem;
+}
+
+.portal-lead {
+  color: var(--muted);
+  margin-bottom: 1.75rem;
+}
+
+.portal-card {
+  background: var(--white);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.25rem 1.4rem;
+  margin-bottom: 1.5rem;
+}
+
+.portal-card h2 {
+  font-size: 1.05rem;
+  color: var(--ink);
+  margin-bottom: 0.9rem;
+}
+
+.portal-banner {
+  border-left: 4px solid var(--teal-bright);
+  background: #eefaf6;
+  padding: 1rem 1.2rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  color: var(--ink);
+}
+
+.portal-banner.is-warning {
+  border-left-color: #d98324;
+  background: #fdf4e7;
+}
+
+.portal-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.portal-tile {
+  background: var(--white);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.1rem 1.2rem;
+}
+
+.portal-tile-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.portal-tile-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--teal-dark);
+  margin-top: 0.3rem;
+}
+
+.portal-tile-note {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
+
+/* ---- record tables ------------------------------------------------------ */
+
+.portal-table-scroll {
+  overflow-x: auto;
+}
+
+.portal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.portal-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 0.6rem 0.75rem;
+  border-bottom: 2px solid #e2e8f0;
+  white-space: nowrap;
+}
+
+.portal-table td {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid #eef2f7;
+  color: var(--ink);
+  vertical-align: top;
+}
+
+.portal-table tr:last-child td {
+  border-bottom: none;
+}
+
+.portal-empty {
+  color: var(--muted);
+  padding: 1.25rem 0;
+}
+
+/* ---- status pills ------------------------------------------------------- */
+
+.pill {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: #e8edf5;
+  color: #46536b;
+}
+
+.pill-ok      { background: #e2f6ee; color: #1a7a5a; }
+.pill-warn    { background: #fdf0dc; color: #9a5c11; }
+.pill-alert   { background: #fde8e8; color: #a32020; }
+.pill-info    { background: #e4eefb; color: #1f5691; }
+
+/* ---- forms -------------------------------------------------------------- */
+
+.portal-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.portal-form .field-wide {
+  grid-column: 1 / -1;
+}
+
+.portal-form label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 0.3rem;
+}
+
+.portal-form input,
+.portal-form select,
+.portal-form textarea {
+  width: 100%;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: var(--white);
+}
+
+.portal-form input:focus,
+.portal-form select:focus,
+.portal-form textarea:focus {
+  outline: 2px solid var(--teal-bright);
+  outline-offset: 1px;
+  border-color: var(--teal-bright);
+}
+
+.portal-form input[readonly] {
+  background: #f1f5f9;
+  color: var(--muted);
+}
+
+.portal-form textarea {
+  resize: vertical;
+  min-height: 84px;
+}
+
+.portal-form-actions {
+  grid-column: 1 / -1;
+}
+
+.portal-hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-top: 0.3rem;
+}
+
+.btn-outline-dark {
+  background: transparent;
+  color: var(--teal-dark);
+  border: 2px solid var(--teal-dark);
+}
+
+.btn-outline-dark:hover {
+  background: var(--teal-dark);
+  color: var(--white);
+}
+
+/* ---- standalone status screen (verification pending / rejected) --------- */
+
+.portal-status {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: var(--surface);
+}
+
+.portal-status-card {
+  background: var(--white);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 2.25rem;
+  max-width: 34rem;
+  text-align: center;
+}
+
+.portal-status-card h1 {
+  color: var(--teal-dark);
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.portal-status-card p {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.portal-status-who {
+  font-size: 0.82rem;
+  margin-bottom: 0.75rem;
+}
+
+.portal-status-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
+}
+
+/* ---- print --------------------------------------------------------------
+   v1 has no PDF downloads; Ctrl-P on a record page is the supported way for a
+   patient to keep a copy, so the chrome is dropped and the tables are inked. */
+
+@media print {
+  .portal-header,
+  .portal-nav,
+  .portal-form,
+  .portal-no-print,
+  .site-footer {
+    display: none !important;
+  }
+
+  .portal-body { background: #fff; }
+
+  .portal-card {
+    border: none;
+    padding: 0;
+    margin-bottom: 1.25rem;
+    break-inside: avoid;
+  }
+
+  .portal-table th,
+  .portal-table td {
+    border-color: #999;
+    color: #000;
+  }
+
+  .pill {
+    border: 1px solid #999;
+    background: transparent !important;
+    color: #000 !important;
+  }
+}
