@@ -13,10 +13,9 @@ A guide for visually QA-ing Asclepius as a doctor, receptionist, lab tech, cashi
   a record. A *portal account* is a separate `users` row with role `patient`, pointed at exactly
   one `patients` row by `users.patientId`. Creating either one alone gives access to nothing: the
   patient must sign up **and** be linked by reception. See "Create a patient portal account" below.
-- **Sign-up creates a no-access account.** `register.php` now creates the account with role
-  **`pending`** (it cannot see anything until an admin assigns a real role). This closed a security
-  hole where self-registration previously became an **admin**. To grant access, set the account's
-  `role` in the database (steps below). A proper role-assignment screen is future work.
+- **There is no staff sign-up.** Staff logins are created by an admin in **`Staff Accounts.php`**,
+  which also assigns the role. Public self-registration (`register.php`) was removed; accounts left
+  over from it have role **`pending`** and see nothing until an admin assigns a role there.
 
 ## Fastest path: the seeded test accounts (local dev)
 
@@ -71,9 +70,10 @@ every request.
 
 ## Create a login for a specific role
 
-1. Open `register.php`, create an account (name + email + password). It is created as **admin**.
-2. Change its role in the database — open **phpMyAdmin** (`http://localhost/phpmyadmin`) or the
-   MySQL CLI, select the `asclepius_db` database, and run:
+1. Log in as an admin, open **Staff Accounts** in the sidebar, and create the account (name,
+   email, role, password). The role is set at creation, so nothing else is needed.
+2. To change a role afterwards, use the same page, or the database — open **phpMyAdmin**
+   (`http://localhost/phpmyadmin`) or the MySQL CLI, select the `asclepius_db` database, and run:
    ```sql
    UPDATE users SET role = 'doctor' WHERE email = 'you@example.com';
    ```

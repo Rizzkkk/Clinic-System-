@@ -20,7 +20,9 @@ manual page refresh (i.e. it is in the database), not just shown on screen.
 | 1.2 | Log in with a wrong password | Rejected, no session | |
 | 1.3 | Open a module URL directly while logged out | Redirected to `login.php` | |
 | 1.4 | Log out (sidebar) | Session cleared; back to login | |
-| 1.5 | Register a new account (`register.php`) | Created as **pending** (admin assigns role); name/email validated; any error shows as a SweetAlert overlay with the CREATE ACCOUNT button still reachable | |
+| 1.5 | Login page | Only the **patient** sign-up link is offered; `register.php` is gone (404) | |
+| 1.5b | As admin, create a staff account in `Staff Accounts.php` | Account created with the chosen role; the new login works and sees exactly that role's sidebar | |
+| 1.5c | As doctor/reception/lab/cashier, open `Staff Accounts.php` | Redirected to the Dashboard; the sidebar link is not shown | |
 | 1.6 | Password reset (`ForgotPassword.php`) end-to-end | Request → link (dev: error log) → set new password → log in with it; messages show as a SweetAlert overlay | |
 
 ## 2. RBAC — sidebar visibility (the "only see what I can use" test)
@@ -98,7 +100,7 @@ enforced **both** client-side (browser bubble) and server-side (rejected before 
 | 7.3 | Valid names with punctuation/accents (`O'Brien`, `Mary-Jane`, `Peña`, `Cruz Jr.`) | Accepted and persist | |
 | 7.4 | Quick patient registration `Last, First Middle` (with comma) | Accepted (comma allowed on that field only) | |
 | 7.5 | Malformed email in any registration form | Rejected client + server | |
-| 7.6 | `register.php`: submit with mismatched passwords / bad input | Error shows as a **SweetAlert overlay**; **CREATE ACCOUNT button stays visible/clickable**; entered values retained; **no refresh needed** | |
+| 7.6 | `Staff Accounts.php`: mismatched passwords / password under 8 chars / duplicate email / bad name | Rejected server-side with a SweetAlert error; no account created | |
 | 7.7 | `login.php` bad login / `ForgotPassword.php` request | Message shows as a SweetAlert overlay (no layout shift) | |
 
 ---

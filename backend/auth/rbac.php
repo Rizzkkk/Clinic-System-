@@ -19,6 +19,9 @@ const MODULE_PERMISSIONS = [
     'lab_technicians'    => ['read' => [], 'write' => []],
     'cashiers'           => ['read' => [], 'write' => []],
     'receptionists'      => ['read' => [], 'write' => []],
+    // Staff logins. Creating one grants access to patient data, so this stays admin-only and has
+    // no public self-service entry point.
+    'staff_accounts'     => ['read' => [], 'write' => []],
     // Diagnostic / clinical modules.
     'dental_records'     => ['read' => ['lab', 'doctor'],       'write' => ['doctor']],
     'psych_sessions'     => ['read' => ['doctor'],              'write' => ['doctor']],

@@ -39,6 +39,7 @@ $sidebarLinks = [
     ['xray_studies',       'X-ray.php',             'radiology',        'X-ray'],
     ['psych_sessions',     'Psych.php',             'psychology',       'Psych'],
     ['portal_accounts',    'Portal Accounts.php',   'how_to_reg',       'Portal Accounts'],
+    ['staff_accounts',     'Staff Accounts.php',    'manage_accounts',  'Staff Accounts'],
 ];
 
 $linkBase = 'flex items-center gap-3 px-3 py-2 mx-2 my-1 rounded-lg transition-colors no-underline text-xs font-bold';

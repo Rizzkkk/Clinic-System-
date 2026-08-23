@@ -155,6 +155,14 @@ All three share one contract (admin-only via RBAC; other roles get `403`):
 
 Pages: `Lab Technicians.php`, `Cashiers.php`, `Receptionists.php` (same shim pattern).
 
+## Staff accounts — `Staff Accounts.php` *(admin-only, no JSON API)*
+
+Plain form POSTs handled in the page itself (no `backend/api/` handler): `action=create_staff`
+(`full_name*, email*, role*, password*, confirm_password*`, password >= 8 chars) and
+`action=assign_role` (`user_id*, role*`). RBAC module `staff_accounts` has empty read/write role
+lists, so only `admin` passes; everyone else is redirected to the Dashboard. `assign_role` cannot
+touch portal (patient) rows and cannot change the acting admin's own role.
+
 ## Diagnostic modules — `dental_records`, `psych_sessions`, `xray_studies`, `agency_referrals` *(verified)*
 
 Patient-linked; one shared contract (RBAC-gated per module — see [security.md](security.md)):

@@ -31,7 +31,7 @@ asclepius-demos/
 ├── (root = web root)            Entry pages a browser hits directly. URLs unchanged.
 │   ├── index.php                Landing (public) ┐
 │   ├── login.php                Staff login      │
-│   ├── register.php             Create account   │ auth pages
+│   ├── Staff Accounts.php       Admin-only staff account creation
 │   ├── ForgotPassword.php       Reset            ┘
 │   ├── Dashboard.php            ┐
 │   ├── Patient.php              │
@@ -156,7 +156,7 @@ Full checklist in [production-release.md](production-release.md). Headlines:
 - **`public/` document root** — most secure (backend physically unreachable over HTTP), but
   changes every page URL + needs hosting docroot control. Today we keep entry pages at root and
   protect `backend/` with `.htaccess`. Revisit at go-live. ([architecture.md](architecture.md))
-- **Move images** into `frontend/assets/img/` — DONE (refs in `index.php`, `register.php`,
+- **Move images** into `frontend/assets/img/` — DONE (refs in `index.php`, the auth pages,
   `ForgotPassword.php` updated).
 - **Rename `Biling.php` → `Billing.php`** — defer; renaming changes its URL and any links to it.
 

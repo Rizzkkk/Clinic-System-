@@ -27,7 +27,7 @@ backend/
   auth/
     bootstrap.php     # session_start + connection + login guard + current-user/role
     login.php         # (from index.php) authenticate + session_regenerate_id
-    register.php      # (from register.php) create account
+    staff_accounts.php # (from Staff Accounts.php) admin-only staff account creation
     logout.php        # destroy session
     rbac.php          # require_role('lab'|'reception'|'cashier'|'admin'|'doctor')
   lib/

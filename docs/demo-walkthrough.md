@@ -48,10 +48,10 @@ This shows the system is not a toy - access is enforced.
 3. **Log out** (sidebar, bottom). Point out that logout fully ends the session.
 4. **Log in as the cashier** (`cashier@test.com`). Now the sidebar shows **Billing** but not the
    clinical modules. "Each role sees a different, safe view of the same system."
-5. (Optional) On the login page, click **Create account** and register one. Explain: "New
-   sign-ups are created with **no access** until an administrator assigns a role - so nobody can
-   self-register into the system." (Log in as `qa@test.com` admin to assign roles via the
-   database if asked.)
+5. (Optional) Log in as `qa@test.com` (admin) and open **Staff Accounts**. Explain: "Staff logins
+   can only be created by an administrator, who picks the role. There is no staff sign-up form -
+   the only public sign-up is the patient portal, and that account sees nothing until reception
+   verifies it."
 
 ---
 
@@ -176,7 +176,7 @@ Honest and strong:
 - **A page bounces you to the Dashboard/login:** that role isn't allowed there - it's the security
   working. Log in with the right role from the table in section 0.
 - **A PDF doesn't open:** check the browser didn't block the pop-up/new tab.
-- **"Access pending" screen:** you logged in with a self-registered account that has no role;
+- **"Access pending" screen:** you logged in with an account that has no role assigned;
   use one of the seeded accounts instead.
 - **Login fails:** confirm XAMPP MySQL is running and you used password `test1234`.
 

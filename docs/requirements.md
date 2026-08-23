@@ -34,7 +34,7 @@ contracts are in [api-reference.md](api-reference.md).
 
 | # | Module | Requirements |
 |---|--------|--------------|
-| FR-1 | Auth | Staff register an account, log in (email + password), and log out. Passwords are hashed (`password_hash`). Unauthenticated access to any module redirects to login. Production adds password reset and role assignment. |
+| FR-1 | Auth | An administrator creates staff accounts and assigns their role (`Staff Accounts.php`); staff log in (email + password) and log out. Passwords are hashed (`password_hash`). Unauthenticated access to any module redirects to login. Production adds password reset and role assignment. |
 | FR-2 | Dashboard | Show counts/metrics across patients, doctors, appointments, and lab results. Read-only. |
 | FR-3 | Patients | Create, list, and delete patients. Manage one-to-many emergency contacts (add/update/delete, mark primary). |
 | FR-4 | Doctors | Create, list, and delete doctors. Filter by department/specialty/status. Enforce unique `licenseNumber` and `employeeId`. |

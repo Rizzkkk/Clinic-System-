@@ -32,7 +32,10 @@
 3. Configure DB credentials via environment (target) — see below. Today they are hardcoded in
    `db.php`, which is exactly what the migration removes.
 4. Serve the folder with Apache/PHP and open `index.php`.
-5. Create a staff account via `register.php`, then log in.
+5. Seed the first admin login directly in SQL (there is no public staff sign-up):
+   `INSERT INTO users (full_name,email,password_hash,role) VALUES ('Admin','admin@example.com','<hash>','admin');`
+   (hash via `php -r 'echo password_hash("changeme123", PASSWORD_DEFAULT);'`). Log in, then create
+   every other staff account from **Staff Accounts.php**.
 
 ## QA smoke test (local)
 

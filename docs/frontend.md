@@ -21,7 +21,7 @@ system and the sidebar.
 
 `portal.css` also carries a **print stylesheet**: v1 has no PDF downloads, so Ctrl-P on a record
 page is the supported way for a patient to keep a copy. Feedback uses the same SweetAlert2 overlay
-convention as `login.php` / `register.php`, never an inline message box.
+convention as `login.php` / `Portal Register.php`, never an inline message box.
 
 ## Design system (current)
 
@@ -66,7 +66,7 @@ Legend: done = working (real DB) · partial · stub = static UI, no backend.
 | `terms.php` | done | n/a | Terms of use. | |
 | `faq.php` | done | n/a | Frequently asked questions. | |
 | `login.php` (Login) | done | n/a | Centered staff login card, no photo. | "Remember me" decorative. |
-| `register.php` | done | n/a | Create staff account; duplicate-email check; `password_hash`. | No password strength/format rules; no role selection (RBAC pending). |
+| `Staff Accounts.php` | done | inline POST | Admin-only: create staff logins (role chosen at creation, min 8-char password) and reassign roles on existing staff. | Public `register.php` was removed - staff accounts are never self-service. |
 | `ForgotPassword.php` | done | no | Server-driven token reset (email link -> new password). | Token-based (`password_resets`), single-use, 1h expiry, no user enumeration. |
 | `Dashboard.php` | done | yes | Counts/metrics across modules; `?api=get_stats`. | Some UI state kept in `localStorage`. |
 | `Patient.php` | done | yes | CRUD patients + emergency contacts (sub-resource). | `?api=get_contacts` uses interpolated SQL (fix). No CSRF. |

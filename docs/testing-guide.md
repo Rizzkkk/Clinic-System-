@@ -23,14 +23,12 @@ Logins live in the `users` table. Roles: `admin`, `doctor`, `reception`, `lab`,
 `cashier` (plus `pending`, which has no access). Patients and doctor-directory
 records are data, not logins.
 
-Fastest way — register through the UI, then set the role in SQL:
+Fastest way — log in as an admin and create the account in **Staff Accounts.php**,
+picking the role in the form. To change a role later, use the same page, or SQL:
 
-1. Open `register.php` and create an account (it starts as `pending`).
-2. Promote it:
-   ```sql
-   UPDATE users SET role = 'doctor' WHERE email = 'doctor@test.com';
-   ```
-3. Repeat for each role you want to test.
+```sql
+UPDATE users SET role = 'doctor' WHERE email = 'doctor@test.com';
+```
 
 Or insert directly with a known password. Generate a hash, then insert:
 
@@ -92,7 +90,7 @@ redirects unauthenticated visitors back to login.
       `login.php`.
 - [ ] `logout.php` ends the session; afterwards protected pages redirect to login
       again.
-- [ ] A freshly registered account (role `pending`) can log in but sees no module
+- [ ] A role-less account (role `pending`) can log in but sees no module
       pages (everything redirects to the dashboard).
 
 ---

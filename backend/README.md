@@ -25,7 +25,8 @@ Every root page and every `api/` handler includes `auth/bootstrap.php` **first**
 2. Opens the single shared mysqli connection (`db/connection.php`, TLS-capable for cloud DBs).
 3. Rejects cross-origin POSTs (Origin/Referer host must match — the current CSRF defense).
 4. Redirects anonymous page loads to `login.php`; returns JSON `401`/`403` for API/POST.
-5. Blocks accounts with no assigned staff role (self-registered `pending` users get no access).
+5. Blocks accounts with no assigned staff role (legacy `pending` users get no access until an
+   admin assigns a role in `Staff Accounts.php`).
 
 After bootstrap, each handler includes `auth/rbac.php` and calls `require_module_access('<module>')`,
 which enforces the module's `read` roles on GET/page loads and `write` roles on POST `action=…`

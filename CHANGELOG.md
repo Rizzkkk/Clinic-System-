@@ -1,5 +1,31 @@
 # CHANGELOG - Walk-in Appointment Registration System
 
+## 2026-08-23 — Staff accounts are admin-only
+
+Public staff self-registration is gone. `register.php` let an unauthenticated stranger create a
+row in `users` on a system holding medical records; the account had no role, but it was still an
+unauthenticated write and one admin mis-click away from access.
+
+### Added
+- **`Staff Accounts.php`** — admin-only page to create staff logins (role chosen in the form,
+  minimum 8-character password, name/email validated via `backend/lib/validation.php`) and to
+  reassign the role of an existing staff account, including the legacy `pending` ones that
+  previously had no path to a role at all. The role assignment's `WHERE` clause keeps it off
+  portal (patient) rows, and an admin cannot change their own role, which would lock out the last
+  administrator.
+- **RBAC module `staff_accounts`** (`backend/auth/rbac.php`) with empty read/write role lists, so
+  only `admin` passes, plus a sidebar link filtered by the same check.
+
+### Removed
+- **`register.php`** and its link on `login.php`. The login page now offers only the patient
+  portal signup. `faq.php` no longer tells employees to request an account.
+
+### Notes
+- The **first** admin must be seeded in SQL (see deployment.md step 5) — there is no longer a
+  self-service way to create one.
+- Security finding **S-20** logged as done in `docs/security.md`; **S-9** narrowed to login
+  throttling now that both account forms enforce a password minimum.
+
 ## 2026-08-23 — Patient portal
 
 Patients can now sign in and see their own records. This is the first time the system has had a

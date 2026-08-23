@@ -126,10 +126,14 @@ requires TLS. No code changes are needed.
 The app is session-based. Logins live in the `users` table and each has a
 **role** that decides what it can see and do.
 
-- **`register.php`** creates a new account with the role **`pending`**, which has
-  **no access** until an administrator promotes it. (This is deliberate — it
-  prevents self-registration from gaining privileges.)
-- To grant a role, update it directly in the database:
+- **There is no staff sign-up.** Staff logins are created by an administrator in
+  **`Staff Accounts.php`** (sidebar: Staff Accounts), which also assigns the role.
+  Public self-registration was removed: an unauthenticated stranger could create a
+  row in `users` on a system holding medical records.
+- Older self-registered accounts still carry the role **`pending`**, which has
+  **no access**; assign them a role from the same page.
+- The **first** admin has to be seeded directly in the database (chicken-and-egg),
+  and you can also change a role there:
 
   ```sql
   UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
@@ -175,7 +179,7 @@ never disagree.
   `Dashboard.php`, `Patient.php`, `Doctor.php`, `Appointment.php`,
   `Prescription.php`, `Biling.php`, `Medical Records.php`,
   `Laboratory Result.php`, `X-ray.php`, `Dental.php`, `Psych.php`,
-  `Agency Referral.php`, staff pages, `register.php`, `logout.php`). `db.php` is a
+  `Agency Referral.php`, staff pages, `Staff Accounts.php`, `logout.php`). `db.php` is a
   compatibility shim that opens the shared connection.
 - **`backend/`** — server logic: `config/` (env + connection settings),
   `db/` (canonical `schema.sql` + `migrations/`), `auth/` (session bootstrap +
@@ -196,6 +200,6 @@ never disagree.
 - **Blank page / white screen** — set `APP_ENV=development` in
   `backend/config/.env` to surface the underlying PHP error, then fix and set it
   back to `production`.
-- **Cannot see any pages after registering** — new accounts are `pending` by
-  design. Promote the account with the `UPDATE users SET role = ...` step in
-  section 6.
+- **Cannot see any pages after logging in** — the account has no role (`pending`).
+  Ask an admin to assign one in `Staff Accounts.php`, or set it with the
+  `UPDATE users SET role = ...` step in section 6.

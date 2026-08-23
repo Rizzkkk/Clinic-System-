@@ -50,9 +50,9 @@ require __DIR__ . '/frontend/partials/public-header.php';
       <article class="faq-item">
         <h2>Who can access the staff portal?</h2>
         <p>
-          Only authorized clinic staff with assigned accounts can sign in. If you are an employee
-          and need access, contact your administrator or use
-          <a href="register.php">request account</a> and wait for role approval.
+          Only authorized clinic staff with assigned accounts can sign in. Staff accounts cannot be
+          created by signing up; if you are an employee and need access, ask your clinic
+          administrator to create one for you.
         </p>
       </article>
 

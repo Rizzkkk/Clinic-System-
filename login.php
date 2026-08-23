@@ -107,11 +107,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
       </form>
 
       <div class="create-account">
-        <span>Clinic staff need an account?</span>
-        <a href="register.php">Create staff account</a>
-      </div>
-
-      <div class="create-account">
         <span>Are you a patient?</span>
         <a href="Portal Register.php">Create a patient account</a>
       </div>

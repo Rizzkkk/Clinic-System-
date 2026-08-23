@@ -28,7 +28,9 @@ cd asclepius-demos
 ## 4. Run it
 - Local (Windows + XAMPP): start MySQL, then double-click `start-local-server.bat`
   (or run `C:\xampp\php\php.exe -S localhost:8000` from the repo root).
-- Open `http://localhost:8000/register.php` -> create an account -> log in.
+- Seed an admin login in SQL (staff sign-up is admin-only, see [deployment.md](deployment.md)
+  step 5), open `http://localhost:8000/login.php` -> log in -> create further staff accounts in
+  **Staff Accounts.php**.
 
 ## 5. QA your change
 Don't ship on `php -l` alone — run it. Smoke-test recipe is in
