@@ -10,15 +10,23 @@ if (isset($_SESSION['user_id']) && in_array($_SESSION['user_role'] ?? '', $valid
 }
 
 $clinic = clinic_info();
-$pageTitle = 'Terms of Use | ASCLEPIUS';
-$metaDescription = 'Terms of use for the ASCLEPIUS website.';
+$publicName = clinic_public_name();
+$pageTitle = 'Terms of use | ' . $publicName;
+$metaDescription = 'Terms of use for the Asclepius Clinic & Laboratory website and patient portal.';
 
 require __DIR__ . '/frontend/partials/public-header.php';
 ?>
 
+<section class="page-hero">
+  <div class="wrap">
+    <p class="eyebrow">Legal</p>
+    <h1>Terms of use</h1>
+    <p>The rules that apply when you use this website and the patient portal.</p>
+  </div>
+</section>
+
 <main class="legal-page">
   <div class="wrap legal-content">
-    <h1>Terms of use</h1>
     <p class="legal-updated">Last updated: <?php echo date('F j, Y'); ?></p>
 
     <section>

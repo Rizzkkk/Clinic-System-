@@ -18,7 +18,7 @@ $portalSuccess = $portalSuccess ?? '';
       <a href="index.php#contact">Contact us</a>
     </div>
     <div class="wrap footer-bottom">
-      <p>&copy; <?php echo date('Y'); ?> <?php echo h($clinic['name']); ?>. All rights reserved.</p>
+      <p>&copy; <?php echo date('Y'); ?> <?php echo h(rtrim($clinic['name'], '.')); ?>. All rights reserved.</p>
     </div>
   </footer>
 

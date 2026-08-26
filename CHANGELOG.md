@@ -1,5 +1,59 @@
 # CHANGELOG - Walk-in Appointment Registration System
 
+## 2026-08-26 - Public website redesign, and a public brand distinct from the legal name
+
+The marketing site was a flat, institutional layout that said little about what the clinic
+actually sells. It has been rebuilt as a modern clinic landing page, and the two things the owner
+wanted surfaced - checkup/laboratory positioning and OFW pre-deployment medicals - now have real
+estate instead of being implied.
+
+### Added
+- **`shortName` on `clinic_info()`** (`backend/config/clinic.php`) = "Asclepius Clinic &
+  Laboratory", plus `clinic_public_name()` which falls back to `name`. The registered name
+  (`ASCLEPIUS Medical & Diagnostic Group Inc.`) is unchanged and still drives the footer copyright
+  and every PDF report - it is what the logo artwork itself reads, so replacing it would have put
+  the site at odds with its own logo.
+- **Blank `TODO(owner)` slots** `dohLicense`, `ofwAccreditation`, `hours`. Each renders only when
+  non-empty, so the site ships claiming "DOH-licensed facility" in prose but never invents a
+  licence number.
+- **New landing sections** in `index.php`: split hero, four-item trust strip, stats band, six
+  service cards, a dedicated **OFW pre-employment / pre-deployment** section (with an
+  agency-referral card that pairs with `Agency Referral.php`), a 3-step "how it works", and a
+  booking CTA band.
+- **Four-column dark footer** and a `.page-hero` band on the legal/FAQ pages.
+- Favicon, OG/Twitter meta, and font preconnects in `public-header.php`.
+
+### Changed
+- **`frontend/assets/css/landing.css`** substantially rewritten. The `:root` tokens and every
+  selector the **patient portal** depends on were kept by name (see `docs/frontend.md`), because
+  the portal loads this stylesheet too.
+- **`faq.php`** now uses native `<details>/<summary>` accordions (no JS) and answers questions
+  about OFW exams, agency referrals and portal result release.
+- **`login.php`** title and lockup now read from `clinic_public_name()` instead of a hardcoded
+  "ASCLEPIUS".
+- Copyright lines in both footers `rtrim` the trailing period - the registered name ends in
+  "Inc.", which was rendering as "Inc.. All rights reserved."
+- Headline wording is deliberately comparative ("Among the Philippines' most trusted...") rather
+  than a bare "#1" claim, and accreditation is phrased as "DOH-licensed facility".
+
+### Deliberately not built
+- **No public appointment form.** The reference layout has one; adding it here would mean a new
+  unauthenticated write endpoint plus spam handling, and `Portal Appointments.php` already owns
+  appointment requests. The CTA links to portal signup and the clinic phone instead.
+- **No doctor cards or testimonials** - there are no photos or real quotes to use, and the repo
+  has exactly two images.
+- The four figures in the stats band are **placeholders** and carry a `TODO(owner)` comment.
+  Replace or delete them before the site is public.
+
+### Verified
+`php -l` clean on all changed files. All five public pages plus `login.php` and
+`Portal Register.php` return 200 with no PHP warnings; scripted checks confirm no horizontal
+overflow at 390/768/1440px and the hamburger switching at the 900px breakpoint. Signed-in staff
+are still redirected to `Dashboard.php` from every public page, and the signed-in-patient nav
+variant still shows "My portal". Portal regression checked by signing in as a temporary patient
+account (since removed) and rendering `Portal.php` - unaffected.
+
+
 ## 2026-08-23 — Staff accounts are admin-only
 
 Public staff self-registration is gone. `register.php` let an unauthenticated stranger create a

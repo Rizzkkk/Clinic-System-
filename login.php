@@ -61,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Staff Login | ASCLEPIUS</title>
+  <title>Staff login | <?php echo htmlspecialchars(clinic_public_name(), ENT_QUOTES, 'UTF-8'); ?></title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="frontend/assets/css/login.css">
 </head>
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login_submit'])) {
       <div class="branding">
         <img src="<?php echo htmlspecialchars($clinic['logoWeb'], ENT_QUOTES, 'UTF-8'); ?>" class="logo" alt="Asclepius logo">
         <div class="company-text">
-          <div class="company-main">ASCLEPIUS</div>
+          <div class="company-main"><?php echo htmlspecialchars(clinic_public_name(), ENT_QUOTES, 'UTF-8'); ?></div>
           <div class="company-sub"><?php echo htmlspecialchars($clinic['name'], ENT_QUOTES, 'UTF-8'); ?></div>
         </div>
       </div>

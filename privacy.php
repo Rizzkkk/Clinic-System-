@@ -10,21 +10,30 @@ if (isset($_SESSION['user_id']) && in_array($_SESSION['user_role'] ?? '', $valid
 }
 
 $clinic = clinic_info();
-$pageTitle = 'Privacy Policy | ASCLEPIUS';
-$metaDescription = 'Privacy policy for ASCLEPIUS Medical and Diagnostic Group Inc.';
+$publicName = clinic_public_name();
+$pageTitle = 'Privacy policy | ' . $publicName;
+$metaDescription = 'How Asclepius Clinic & Laboratory collects, uses and protects personal and health information.';
 
 require __DIR__ . '/frontend/partials/public-header.php';
 ?>
 
+<section class="page-hero">
+  <div class="wrap">
+    <p class="eyebrow">Legal</p>
+    <h1>Privacy policy</h1>
+    <p>How we handle the personal and health information you entrust to the clinic.</p>
+  </div>
+</section>
+
 <main class="legal-page">
   <div class="wrap legal-content">
-    <h1>Privacy policy</h1>
     <p class="legal-updated">Last updated: <?php echo date('F j, Y'); ?></p>
 
     <section>
       <h2>1. Introduction</h2>
       <p>
-        <?php echo htmlspecialchars($clinic['name'], ENT_QUOTES, 'UTF-8'); ?> ("ASCLEPIUS", "we", "us")
+        <?php echo htmlspecialchars($clinic['name'], ENT_QUOTES, 'UTF-8'); ?>, operating as
+        <?php echo htmlspecialchars($publicName, ENT_QUOTES, 'UTF-8'); ?> ("we", "us"),
         respects your privacy. This policy explains how we collect, use, and protect personal
         information when you visit our website or use our clinic services.
       </p>

@@ -44,10 +44,58 @@ visual styles exist today and should be unified during migration:
 **Palette (teal):** `#2bb18f`, `#0aa6a6`, `#259676` (auth) and `#00685d` / `#008376`
 (modules). **Layout:** module pages use a fixed 260px left sidebar (`w-sidebar`) + content.
 
+## Public website
+
+The public site (`index.php`, `faq.php`, `privacy.php`, `terms.php`, `cookies.php`) is a
+marketing surface modelled on a modern clinic template: split hero, icon trust strip, stats band,
+service cards, a dedicated OFW pre-deployment medical section, a 3-step "how it works" strip, a
+booking CTA band, and a four-column dark footer. Still vanilla CSS and PHP includes - **no
+framework, no build step, no JS library**; icons are inline SVG and the FAQ accordions are native
+`<details>/<summary>`.
+
+### Two names, deliberately
+
+`backend/config/clinic.php` carries both:
+
+| Field | Value | Used by |
+|---|---|---|
+| `name` | ASCLEPIUS Medical & Diagnostic Group Inc. | footer copyright, About paragraph, **PDF reports** |
+| `shortName` | Asclepius Clinic & Laboratory | header lockup, page titles, hero, footer wordmark |
+
+`clinic_public_name()` returns `shortName` and falls back to `name`. Do not replace `name` with
+the marketing brand: it is the registered entity, it is what the logo artwork itself reads, and it
+is stamped on every PDF. `dohLicense`, `ofwAccreditation` and `hours` are blank `TODO(owner)`
+slots - each renders only when non-empty, so no unsubstantiated accreditation claim ships by
+default.
+
+### landing.css is shared - do not delete these selectors
+
+`landing.css` is loaded by the **patient portal** too (`frontend/partials/portal-nav.php`, with
+`portal.css` layered on top) and by `Portal Register.php`. Restyling them is fine; removing them
+breaks the portal:
+
+`:root` tokens - `.wrap` - `.btn` / `.btn-primary` / `.btn-outline-light` - `.site-footer` /
+`.footer-links` / `.footer-bottom` - `.legal-page` / `.legal-content` - `.cookie-banner*`
+
+Everything else in the file is public-site only. After any change here, re-check a signed-in
+portal page, not just the marketing pages.
+
+### Chrome contract
+
+`public-header.php` expects `$clinic` (from `clinic_info()`) and optionally `$pageTitle`,
+`$metaDescription`, `$extraStyles[]`. It renders the utility bar, sticky header and nav, and owns
+the `<head>` (favicon, OG/Twitter tags, Poppins). `public-footer.php` closes the document and owns
+the footer columns, cookie banner, nav-toggle script and `cookies.js`. Because both partials are
+shared, a chrome change needs no edits to the five page files.
+
+Breakpoints: 1000px (grids drop to two columns), 900px (hamburger appears, hero/about/contact
+stack), 640px (single column), 560px (top bar stacks, brand text hides).
+
 ### Known inconsistencies to standardize
 
 - **Branding mismatch:** module pages are titled **"MedLab Pro"** / "Laboratory Information
-  System", while auth pages and the sidebar say **"ASCLEPIUS"**. Pick one.
+  System", while auth pages and the sidebar say **"ASCLEPIUS"**. Pick one - the public site and
+  `login.php` now use `clinic_public_name()`, so the module pages are the remaining outlier.
 - **Two Tailwind theme configs** are duplicated across module pages — extract to one shared
   config/stylesheet.
 - **Tailwind CDN** is convenient but not ideal for production (FOUC, no purge, external
@@ -60,7 +108,7 @@ Legend: done = working (real DB) · partial · stub = static UI, no backend.
 
 | Page (file) | State | Auth guard | What it does | Gaps / notes |
 |-------------|:----:|:---------:|--------------|--------------|
-| `index.php` (Landing) | done | n/a | Public clinic website (Hi-Precision style layout). | Shared header/footer partials. |
+| `index.php` (Landing) | done | n/a | Public clinic website: hero, trust strip, stats, services, OFW medical, how-it-works, booking CTA, contact. | Shared header/footer partials. Booking CTA links to the portal - there is no public POST form. |
 | `privacy.php` | done | n/a | Privacy policy. | |
 | `cookies.php` | done | n/a | Cookie policy + preference toggles (localStorage). | Banner on all public pages. |
 | `terms.php` | done | n/a | Terms of use. | |

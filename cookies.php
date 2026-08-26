@@ -10,24 +10,24 @@ if (isset($_SESSION['user_id']) && in_array($_SESSION['user_role'] ?? '', $valid
 }
 
 $clinic = clinic_info();
-$pageTitle = 'Cookie Preferences | ASCLEPIUS';
-$metaDescription = 'Manage cookie preferences for the ASCLEPIUS website.';
+$publicName = clinic_public_name();
+$pageTitle = 'Cookie preferences | ' . $publicName;
+$metaDescription = 'Manage cookie preferences for the Asclepius Clinic & Laboratory website.';
 
 require __DIR__ . '/frontend/partials/public-header.php';
 ?>
 
-<main class="legal-page">
-  <div class="wrap legal-content">
+<section class="page-hero">
+  <div class="wrap">
+    <p class="eyebrow">Legal</p>
     <h1>Cookie preferences</h1>
-    <p class="legal-updated">Last updated: <?php echo date('F j, Y'); ?></p>
+    <p>Cookies are small text files stored on your device. They help this website remember your settings.</p>
+  </div>
+</section>
 
-    <section>
-      <h2>What are cookies?</h2>
-      <p>
-        Cookies are small text files stored on your device. They help our website remember
-        settings and improve your experience.
-      </p>
-    </section>
+<main class="legal-page">
+  <div class="wrap">
+    <p class="legal-updated">Last updated: <?php echo date('F j, Y'); ?></p>
 
     <section class="cookie-prefs">
       <h2>Manage your preferences</h2>
@@ -57,13 +57,15 @@ require __DIR__ . '/frontend/partials/public-header.php';
       </div>
     </section>
 
-    <section>
-      <h2>More information</h2>
-      <p>
-        For details on how we handle personal data, see our
-        <a href="privacy.php">privacy policy</a>.
-      </p>
-    </section>
+    <div class="legal-content">
+      <section>
+        <h2>More information</h2>
+        <p>
+          For details on how we handle personal data, see our
+          <a href="privacy.php">privacy policy</a>.
+        </p>
+      </section>
+    </div>
   </div>
 </main>
 
