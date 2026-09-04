@@ -22,3 +22,12 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# Private to the working machine - deliberately not on the public repo.
+# These carry deployment topology, the security findings list, and QA account
+# passwords. Removed from GitHub in 2681b8e/34ee163/2ab2412/23928fe; listed here
+# so they cannot be committed back by accident.
+/docs/
+/CLAUDE.md
+/CHANGELOG.md
+/.claude/
