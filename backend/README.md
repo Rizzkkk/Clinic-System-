@@ -1,7 +1,7 @@
 # backend/
 
 Server-side PHP for Asclepius. This is the active home for backend logic in the
-refactor-in-place migration (see [docs/backend-plan.md](../docs/backend-plan.md)). The shared
+refactor-in-place migration. The shared
 plumbing (config, DB, session, auth, RBAC, JSON/PDF helpers) lives here, and **all module data
 access now runs through the per-module handlers in `api/`**. The flat `*.php` pages at the repo
 root are the view layer; they include this folder's bootstrap and delegate `?api=` / POST calls
@@ -31,7 +31,8 @@ Every root page and every `api/` handler includes `auth/bootstrap.php` **first**
 After bootstrap, each handler includes `auth/rbac.php` and calls `require_module_access('<module>')`,
 which enforces the module's `read` roles on GET/page loads and `write` roles on POST `action=…`
 (`admin` always passes). Pages also call `can_access('<module>', 'write')` to show/hide write
-controls. The permission matrix in `rbac.php` mirrors [docs/security.md](../docs/security.md).
+controls. `rbac.php` holds the whole permission matrix: it is the only place a role is granted
+access to a module, so read it before changing who may see what.
 
 A root page wires in like this:
 
@@ -68,6 +69,5 @@ statements and log real DB errors server-side while returning a safe message to 
 - All DB access uses prepared statements; the current CSRF defense is the same-origin check in
   bootstrap (a per-request token is a documented follow-up).
 
-See [docs/architecture.md](../docs/architecture.md) for the full request flow,
-[docs/api-reference.md](../docs/api-reference.md) for the endpoint list, and
-[docs/backend-plan.md](../docs/backend-plan.md) for remaining migration work.
+Each handler in `api/` opens with a header comment listing its own `?api=` reads and POST
+`action` writes with their JSON shapes; that is the endpoint reference.

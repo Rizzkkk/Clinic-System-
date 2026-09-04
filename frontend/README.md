@@ -1,7 +1,7 @@
 # frontend/
 
-Presentation layer for Asclepius — shared page markup and static assets (see
-[docs/frontend.md](../docs/frontend.md)). The per-module **entry pages still live as flat
+Presentation layer for Asclepius - shared page markup and static assets. The per-module
+**entry pages still live as flat
 `*.php` files at the repo root** (served at the web root); this folder holds the shared pieces
 extracted out of them. There is **no build step** — plain HTML/CSS/JS rendered by PHP, with
 Tailwind and a few libraries loaded via CDN.
@@ -37,7 +37,7 @@ Tailwind utilities so it looks the same under each page's custom Tailwind config
 - **Fonts:** Inter + Manrope + Material Symbols (module pages); Poppins (auth pages).
 - **Layout:** module pages use a fixed 260px left sidebar + content area.
 
-### Known inconsistencies to standardize (see [docs/frontend.md](../docs/frontend.md))
+### Known inconsistencies to standardize
 
 - **Branding mismatch:** module page `<title>`s say "MedLab Pro" while the sidebar and auth
   pages say "ASCLEPIUS". Pick one.
@@ -48,7 +48,7 @@ Tailwind utilities so it looks the same under each page's custom Tailwind config
 ## Frontend ↔ backend interaction
 
 Pages talk to their own backend with `fetch()` against the `?api=` GET and POST `action`
-endpoints documented in [docs/api-reference.md](../docs/api-reference.md); JSON in, JSON out.
+endpoints listed in the header comment of each `backend/api/*.php` handler; JSON in, JSON out.
 Those calls currently hit the root page (e.g. `Doctor.php?api=get_doctors`), which delegates to
 `backend/api/doctors.php` via a compat shim. Use the shared `showError` / `showSuccess` /
 `confirmAction` helpers for user feedback rather than raw `alert()`/`confirm()`.
