@@ -1,4 +1,4 @@
--- 002: Staff role directories — lab technicians, cashiers, receptionists.
+-- 002: Staff role directories - lab technicians, cashiers, receptionists.
 -- Product decision: one page + table per role (modeled on doctors), see docs/database/erd.md.
 -- Accountability FKs (laboratory_results.performedBy etc.) are deferred until the modules
 -- actually record them (docs/database/migrations.md N-4).

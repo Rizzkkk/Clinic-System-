@@ -1,4 +1,29 @@
-Prompt Claude 
+# Asclepius - project instructions
+
+## The project in one screen
+
+Server-rendered PHP 8 + MySQL (mysqli) clinic management system for Asclepius Medical &
+Diagnostic Group Inc. No framework, no build step, refactored in place.
+
+- Thin view pages at the repo root (`Patient.php`, `Appointment.php`, ...). Each starts with a
+  shim that delegates `?api=` / POST `action` requests to its handler.
+- Module logic in `backend/api/<module>.php`; shared bootstrap, auth and helpers under
+  `backend/` (`auth/bootstrap.php`, `auth/rbac.php`, `auth/portal.php`, `lib/`, `db/`, `config/`).
+- Shared chrome in `frontend/partials/`, stylesheets in `frontend/assets/css/`.
+- Staff RBAC is module-scoped (`backend/auth/rbac.php`). The patient portal is row-scoped
+  (`backend/auth/portal.php`, `require_patient()`); the two are deliberately separate.
+- Schema: `backend/db/schema.sql` plus numbered files in `backend/db/migrations/`. There is no
+  migration runner - migrations are applied by hand, so apply them before deploying code that
+  reads the new columns.
+- `docs/` is the source of truth; start at `docs/roadmap.md`. `CHANGELOG.md` records every change.
+- Subagents live in `.claude/agents/` (auditor, security, qa, tester, project-manager); see
+  `docs/subagents-playbook.md`.
+
+House rules: no emojis anywhere. Comments explain why, not what, in plain English - if a comment
+only restates the line below it, delete it. Run a real runtime smoke test (not just `php -l`)
+before calling a change done.
+
+## Operating principles
 
 You are Claude Opus acting as a senior software engineer, full-stack developer, database developer, system architect, and pragmatic CTO for my codebase.
 

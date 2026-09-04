@@ -411,7 +411,6 @@ Register Doctor
         const CAN_WRITE = <?php echo $canWriteDoctor ? 'true' : 'false'; ?>;
         let DOCTORS_CACHE = [];
         let editingDoctorId = null;
-        // Modal functionality
         function openModal() {
             const modal = document.getElementById('doctorModal');
             modal.classList.remove('hidden');
@@ -426,21 +425,18 @@ Register Doctor
             document.body.style.overflow = 'auto';
         }
 
-        // Close modal when clicking outside
         document.getElementById('doctorModal').addEventListener('click', (e) => {
             if (e.target.id === 'doctorModal') {
                 closeModal();
             }
         });
 
-        // Close modal on Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeModal();
             }
         });
 
-        // Doctor data management - using database API
         function getDoctors() {
             return fetch('backend/api/doctors.php?api=get_doctors')
                 .then(r => r.json())
@@ -475,7 +471,6 @@ Register Doctor
             }).then(r => r.json());
         }
 
-        // Form submission handling
         const doctorForm = document.getElementById('doctorForm');
         doctorForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -491,7 +486,6 @@ Register Doctor
                     btn.innerHTML = '<span class="material-symbols-outlined align-middle mr-2">check_circle</span> Doctor Registered';
                     btn.classList.replace('bg-primary', 'bg-emerald-600');
                     
-                    // Show success toast
                     const toast = document.createElement('div');
                     toast.className = 'bg-inverse-surface text-inverse-on-surface px-6 py-3 rounded-lg shadow-2xl flex items-center gap-3';
                     toast.innerHTML = `
@@ -519,14 +513,12 @@ Register Doctor
             });
         });
 
-        // Load doctors into table
         async function loadDoctors() {
             const doctors = await getDoctors();
             currentPage = 1;
             displayPage(doctors, currentPage);
         }
 
-        // Update shift schedule widget
         async function updateShiftSchedule() {
             const doctors = await getDoctors();
             const morningShift = doctors.filter(d => d.shift === 'morning');
@@ -569,7 +561,6 @@ Register Doctor
             });
         }
 
-        // Update statistics
         async function updateStatistics() {
             const response = await fetch('backend/api/doctors.php?api=get_stats').then(r => r.json());
             document.getElementById('totalDoctorsCount').textContent = response.total || 0;
@@ -577,7 +568,6 @@ Register Doctor
             document.getElementById('departmentLoadCount').textContent = (response.load || 0) + '%';
         }
 
-        // Full Roster Modal
         async function openRosterModal() {
             const doctors = await getDoctors();
             const modal = document.createElement('div');
@@ -641,17 +631,14 @@ Register Doctor
             }
         }
 
-        // Wire up View Full Roster button
         const rosterButton = document.getElementById('viewRosterButton');
         if (rosterButton) {
             rosterButton.addEventListener('click', openRosterModal);
         }
 
-        // Pagination variables
         let currentPage = 1;
         const itemsPerPage = 5;
 
-        // Display paginated results
         function displayPage(doctors, page) {
             DOCTORS_CACHE = doctors;
             const start = (page - 1) * itemsPerPage;
@@ -702,7 +689,6 @@ Register Doctor
             updatePaginationButtons(doctors.length);
         }
 
-        // Update pagination buttons
         function updatePaginationButtons(totalItems) {
             const totalPages = Math.ceil(totalItems / itemsPerPage);
             const pageNumbersContainer = document.getElementById('pageNumbers');
@@ -727,7 +713,6 @@ Register Doctor
             document.getElementById('nextBtn').disabled = currentPage === totalPages || totalPages === 0;
         }
 
-        // Handle previous/next buttons
         document.getElementById('prevBtn').addEventListener('click', () => {
             if (currentPage > 1) {
                 currentPage--;
@@ -744,7 +729,6 @@ Register Doctor
             }
         });
 
-        // Filter functionality
         async function applyFilters() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
             const departmentFilter = document.getElementById('departmentFilter').value.toLowerCase();
@@ -770,20 +754,17 @@ Register Doctor
             displayPage(filtered, currentPage);
         }
 
-        // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
             loadDoctors();
             updateShiftSchedule();
             updateStatistics();
             
-            // Attach filter listeners
             document.getElementById('searchInput').addEventListener('input', applyFilters);
             document.getElementById('departmentFilter').addEventListener('change', applyFilters);
             document.getElementById('specialtyFilter').addEventListener('change', applyFilters);
             document.getElementById('statusFilter').addEventListener('change', applyFilters);
         });
 
-        // Simple Hover Effects for Table Rows
         document.addEventListener('DOMContentLoaded', () => {
             const rows = document.querySelectorAll('tbody tr');
             rows.forEach(row => {

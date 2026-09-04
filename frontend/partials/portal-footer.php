@@ -2,7 +2,7 @@
 // Closes a patient portal page opened by portal-nav.php, and carries the shared SweetAlert2
 // feedback overlay. Portal pages are plain form POSTs, so a page sets $portalError /
 // $portalSuccess before including this and the result is shown after the reload -- the same
-// convention login.php and register.php use (never an inline message box).
+// convention login.php and Portal Register.php use (never an inline message box).
 
 $portalError = $portalError ?? '';
 $portalSuccess = $portalSuccess ?? '';

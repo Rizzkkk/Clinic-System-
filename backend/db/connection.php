@@ -1,5 +1,5 @@
 <?php
-// Opens the shared MySQL connection from configuration. No DDL here —
+// Opens the shared MySQL connection from configuration. No DDL here -
 // the canonical schema lives in backend/db/schema.sql and is applied via migrations.
 
 require_once __DIR__ . '/../config/config.php';

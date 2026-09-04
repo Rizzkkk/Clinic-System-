@@ -8,7 +8,7 @@
 // CREATE TABLE on each request. Both have been removed. The single canonical
 // schema is backend/db/schema.sql, applied deliberately (see docs/database/migrations.md).
 //
-// Legacy pages still do `require_once __DIR__ . '/db.php';` and use $conn — that keeps working.
+// Legacy pages still do `require_once __DIR__ . '/db.php';` and use $conn - that keeps working.
 
 require_once __DIR__ . '/backend/db/connection.php';
 

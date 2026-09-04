@@ -1,5 +1,36 @@
 # CHANGELOG - Walk-in Appointment Registration System
 
+## 2026-09-04 - Housekeeping: comments, ignore rules, and project instructions
+
+No behaviour change. A pass over the things that had drifted or read like filler.
+
+### Changed
+- **Code comments.** 52 comments that only restated the line below them were deleted
+  (`// Modal functionality`, `// Get statistics`, `// Close modal on Escape key`, `// Reset form`,
+  and the like) across `Appointment.php`, `Dashboard.php`, `Doctor.php`, `Medical Records.php`
+  and `Patient.php`, and six more in `dev/install.php` / `dev/add_table.php`. The remaining
+  comments explain a decision, a constraint, or a past bug. Em dashes in comments were replaced
+  with plain hyphens (PHP and the SQL schema/migration headers), and the `----- Writes -----` /
+  `----- Reads -----` banners in `backend/api/*.php` were shortened to `// Writes` / `// Reads`.
+  `backend/api/patients.php` no longer carries a diff-note comment ("Fixed: was raw string
+  interpolation"); it states the constraint instead.
+- **`CLAUDE.md`** now opens with the project itself - stack, where code lives, the RBAC vs portal
+  split, the hand-applied migrations warning, and the house rules - before the generic operating
+  principles. Previously it said nothing about Asclepius at all.
+- **`.gitignore`** gained `/vendor/`, `composer.lock` (no PHP dependencies today, so the lock file
+  would only be noise), `*.log`, `cookies.txt`, `.idea/` and `.vscode/`.
+- **`docs/backend-plan.md`** conventions list gained rule 8: comments say why, not what.
+- **`start-local-server.bat`** pointed the developer at `register.php`, removed on 2026-08-23.
+  It now opens `index.php`.
+- **`frontend/partials/portal-footer.php`** referenced the same removed `register.php`; the
+  comment now names `Portal Register.php`.
+
+### Verified
+`php -l` clean on every changed PHP file. With the local server running, all five public pages
+plus `login.php` and `Portal Register.php` return 200, and signed in as an admin all eight staff
+module pages return 200 with no PHP notices or warnings in the output.
+
+
 ## 2026-08-26 - Public website redesign, and a public brand distinct from the legal name
 
 The marketing site was a flat, institutional layout that said little about what the clinic

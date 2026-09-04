@@ -1,13 +1,11 @@
 <?php
 require_once __DIR__ . '/backend/auth/bootstrap.php';
 
-// Get statistics
 $doctorsCount = $conn->query('SELECT COUNT(*) as count FROM doctors')->fetch_assoc()['count'];
 $patientsCount = $conn->query('SELECT COUNT(*) as count FROM patients')->fetch_assoc()['count'];
 $appointmentsCount = $conn->query('SELECT COUNT(*) as count FROM appointments WHERE status = "Scheduled"')->fetch_assoc()['count'];
 $labResultsCount = $conn->query('SELECT COUNT(*) as count FROM laboratory_results')->fetch_assoc()['count'];
 
-// Additional metrics for dashboard
 $completedAppointments = $conn->query('SELECT COUNT(*) as count FROM appointments WHERE status = "Completed"')->fetch_assoc()['count'];
 // Excludes unconfirmed patient-portal requests: they are not bookings, and counting them would
 // drag down the completed/total "accuracy rate" below.
@@ -15,7 +13,6 @@ $totalAppointments = $conn->query('SELECT COUNT(*) as count FROM appointments WH
 $pendingReviews = $conn->query('SELECT COUNT(*) as count FROM laboratory_results WHERE abnormalFlag = "Y"')->fetch_assoc()['count'];
 $accuracyRate = $totalAppointments > 0 ? round(($completedAppointments / $totalAppointments) * 100) : 0;
 
-// Get recent appointments
 $recentAppointments = [];
 $result = $conn->query('
     SELECT a.id, a.appointmentDate, a.appointmentTime, p.firstName, p.lastName, d.firstName as docFirst, d.lastName as docLast, a.status 
@@ -30,14 +27,12 @@ while ($row = $result->fetch_assoc()) {
     $recentAppointments[] = $row;
 }
 
-// Get recent patients
 $recentPatients = [];
 $result = $conn->query('SELECT id, firstName, lastName, phone, email, created_at FROM patients ORDER BY created_at DESC LIMIT 5');
 while ($row = $result->fetch_assoc()) {
     $recentPatients[] = $row;
 }
 
-// Get recent laboratory orders/results for the dashboard table
 $recentTestOrders = [];
 $result = $conn->query('
     SELECT lr.id, lr.patientId, lr.testType, lr.testDate, lr.abnormalFlag, p.firstName, p.lastName
@@ -422,7 +417,6 @@ $dashboardMetricsJson = json_encode([
             const pendingReviews = Number(dashboardInitialMetrics.pendingReviews || 0);
             const accuracyRate = Number(dashboardInitialMetrics.accuracyRate || 0);
 
-            // Update new metrics
             const totalEl = document.getElementById('totalPatientsCount');
             if (totalEl) totalEl.textContent = String(totalPatients);
             const activeEl = document.getElementById('activeCasesCount');
@@ -569,7 +563,6 @@ $dashboardMetricsJson = json_encode([
             });
         });
 
-        // Simple Fade-in animation for cards
         const observerOptions = {
             threshold: 0.1
         };
@@ -588,7 +581,6 @@ $dashboardMetricsJson = json_encode([
             observer.observe(el);
         });
 
-        // Fetch latest patient stats from the server, then render dashboard
         fetchPatientStats().then(() => {
             refreshDashboard();
             applySearchFilter();

@@ -1,4 +1,4 @@
--- Asclepius — canonical database schema (single source of truth).
+-- Asclepius - canonical database schema (single source of truth).
 -- Captured from the previously-inline schema in db.php (the most complete version:
 -- indexes, ON DELETE rules, and the full medical_records columns).
 --
@@ -9,7 +9,7 @@
 --
 -- Local dev: uncomment the CREATE DATABASE / USE lines below.
 -- Shared hosting: the database already exists; select it in your panel, then run the
--- CREATE TABLE statements. Do NOT run this on every request — apply deliberately.
+-- CREATE TABLE statements. Do NOT run this on every request - apply deliberately.
 
 -- CREATE DATABASE IF NOT EXISTS asclepius_db
 --   CHARACTER SET utf8mb4
@@ -222,7 +222,7 @@ CREATE TABLE IF NOT EXISTS patient_contacts (
   INDEX patient_contacts_patient_idx (patientId),
   CONSTRAINT patient_contacts_patient_fk FOREIGN KEY (patientId) REFERENCES patients(id) ON DELETE CASCADE
 );
--- 002: Staff role directories — lab technicians, cashiers, receptionists.
+-- 002: Staff role directories - lab technicians, cashiers, receptionists.
 -- Product decision: one page + table per role (modeled on doctors), see docs/database/erd.md.
 -- Accountability FKs (laboratory_results.performedBy etc.) are deferred until the modules
 -- actually record them (docs/database/migrations.md N-4).
@@ -298,7 +298,7 @@ CREATE TABLE IF NOT EXISTS password_resets (
   INDEX password_resets_token_idx (token),
   CONSTRAINT password_resets_user_fk FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
 );
--- 004: Build out the previously-stub modules — dental, psychiatry, x-ray, agency referrals.
+-- 004: Build out the previously-stub modules - dental, psychiatry, x-ray, agency referrals.
 -- Each is patient-linked (ON DELETE CASCADE), modeled on the existing clinical modules.
 
 CREATE TABLE IF NOT EXISTS dental_records (

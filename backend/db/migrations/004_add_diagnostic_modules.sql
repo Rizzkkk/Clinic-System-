@@ -1,4 +1,4 @@
--- 004: Build out the previously-stub modules — dental, psychiatry, x-ray, agency referrals.
+-- 004: Build out the previously-stub modules - dental, psychiatry, x-ray, agency referrals.
 -- Each is patient-linked (ON DELETE CASCADE), modeled on the existing clinical modules.
 
 CREATE TABLE IF NOT EXISTS dental_records (

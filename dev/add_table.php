@@ -29,7 +29,6 @@ if ($conn->query($table_sql) === TRUE) {
     $success = true;
     $message = "patient_contacts table created successfully!";
     
-    // Try to create indexes (they might already exist)
     $conn->query($index_sql_1);
     $conn->query($index_sql_2);
 } else {

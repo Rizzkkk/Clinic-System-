@@ -338,14 +338,12 @@ Register Patient
 </div>
 </div>
 <script>
-        // Simple micro-interactions
         document.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', (e) => {
                 if (link.getAttribute('href') === '#') e.preventDefault();
             });
         });
 
-        // Modal functionality
         function showPatientModal() {
             const modal = document.getElementById('patientModal');
             modal.classList.remove('hidden');
@@ -379,14 +377,12 @@ Register Patient
             document.body.style.overflow = 'auto';
         }
 
-        // Close modal when clicking outside
         document.getElementById('patientModal').addEventListener('click', (e) => {
             if (e.target.id === 'patientModal') {
                 closeModal();
             }
         });
 
-        // Close modal on Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeModal();

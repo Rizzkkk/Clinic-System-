@@ -1,6 +1,6 @@
 <?php
 // Minimal, dependency-free PDF generator for simple text reports.
-// Pure PHP, no Composer — works on shared hosting. Core font Helvetica (ASCII text; non-ASCII
+// Pure PHP, no Composer - works on shared hosting. Core font Helvetica (ASCII text; non-ASCII
 // is transliterated). Enough for one-page clinical reports (headings, labelled fields, wrapped
 // text, and an embedded JPEG image such as a doctor signature).
 

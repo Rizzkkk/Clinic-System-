@@ -9,7 +9,7 @@ require_once __DIR__ . '/backend/auth/rbac.php';
 require_module_access('medical_records');
 $canWriteMr = can_access('medical_records', 'write');
 
-// --- Server-rendered table data below (uses $conn from bootstrap) ---
+// Table data rendered server-side below, using $conn from bootstrap.
 function h($value) {
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }
@@ -498,7 +498,6 @@ Create Record
             }
         });
 
-        // Modal functionality
         function openModal() {
             editingMrId = null;
             editingMrDate = null;
@@ -508,7 +507,6 @@ Create Record
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             document.body.style.overflow = 'hidden';
-                    // Load patients + physicians list when modal opens
                     loadPatientsForModal();
                     loadDoctorsForModal();
         }
@@ -555,21 +553,18 @@ Create Record
             document.body.style.overflow = 'auto';
         }
 
-        // Close modal when clicking outside
         document.getElementById('medicalRecordModal').addEventListener('click', (e) => {
             if (e.target.id === 'medicalRecordModal') {
                 closeModal();
             }
         });
 
-        // Close modal on Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeModal();
             }
         });
 
-        // Form submission handling
         const medicalRecordForm = document.getElementById('medicalRecordForm');
         medicalRecordForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -637,7 +632,6 @@ Create Record
             }
         });
 
-        // Simple micro-interaction for search bar focus
         const searchInput = document.querySelector('input[type="text"]');
         searchInput.addEventListener('focus', () => {
             searchInput.parentElement.classList.add('scale-[1.02]');
@@ -648,7 +642,6 @@ Create Record
             searchInput.parentElement.classList.remove('shadow-md');
         });
 
-        // Populate patient select inside the modal and fill DOB/gender on selection
         async function loadPatientsForModal() {
             const select = document.getElementById('patientSelect');
             const mrnInput = document.querySelector('input[name="mrn"]');
@@ -662,7 +655,6 @@ Create Record
                 if (!res.ok) throw new Error('Failed to load patients');
                 const patients = await res.json();
 
-                // Clear existing options except the placeholder
                 const selectedPatientValue = hiddenPatientId ? hiddenPatientId.value : '';
                 select.innerHTML = '<option value="">Select patient</option>';
                 const patientsMap = {};
@@ -708,7 +700,6 @@ Create Record
             }
         }
 
-        // Populate physician select from the doctors table (value = doctor display name)
         let doctorsLoaded = false;
         async function loadDoctorsForModal() {
             const select = document.getElementById('physicianSelect');
@@ -730,7 +721,6 @@ Create Record
             }
         }
 
-        // Simulating record clicks
         document.querySelectorAll('.table-row-hover').forEach(row => {
             row.addEventListener('click', () => {
                 row.classList.add('bg-primary/5');

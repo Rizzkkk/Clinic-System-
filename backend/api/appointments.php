@@ -20,7 +20,7 @@ require_module_access('appointments');
 // get_stats excludes it.
 const APPOINTMENT_STATUSES = ['Requested', 'Scheduled', 'Completed', 'Cancelled'];
 
-// ----- Writes -------------------------------------------------------------
+// Writes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
 
@@ -105,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     json_fail('Unknown action.');
 }
 
-// ----- Reads --------------------------------------------------------------
+// Reads
 $api = $_GET['api'] ?? '';
 
 if ($api === 'get_appointments') {

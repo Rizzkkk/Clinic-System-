@@ -1,4 +1,4 @@
-# Secrets — never commit real credentials
+# Secrets - never commit real credentials
 .env
 backend/config/.env
 *.local.php
@@ -7,7 +7,18 @@ backend/config/.env
 storage/xray/
 storage/signatures/
 
+# Composer. There are no PHP dependencies today, so the lock file would only
+# be noise; if a real dependency is ever added, start tracking composer.lock.
+/vendor/
+composer.lock
+
+# Scratch output from smoke tests and local runs
+*.log
+cookies.txt
+
 # OS / editor noise
 Thumbs.db
 .DS_Store
 *.swp
+.idea/
+.vscode/

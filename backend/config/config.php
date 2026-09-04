@@ -61,7 +61,7 @@ function asclepius_config(): array
 }
 
 // Environment-aware error handling. In production, never render errors/stack traces to the
-// browser (they could leak patient data) — log them instead. Dev shows them for debugging.
+// browser (they could leak patient data) - log them instead. Dev shows them for debugging.
 error_reporting(E_ALL);
 @ini_set('log_errors', '1');
 @ini_set('display_errors', asclepius_config()['app_env'] === 'development' ? '1' : '0');

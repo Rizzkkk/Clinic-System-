@@ -33,7 +33,7 @@ function lab_collect_items(): array {
     return $items;
 }
 
-// ----- Writes -------------------------------------------------------------
+// Writes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
 
@@ -128,7 +128,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     json_fail('Unknown action.');
 }
 
-// ----- Reads --------------------------------------------------------------
+// Reads
 $api = $_GET['api'] ?? '';
 
 if ($api === 'get_results') {
@@ -167,7 +167,7 @@ if ($api === 'get_stats') {
 }
 
 // PDF report for a single result. A read operation, so RBAC (above) already limits it to
-// lab, doctor, and admin — i.e. both the lab-technician and doctor sides.
+// lab, doctor, and admin - i.e. both the lab-technician and doctor sides.
 if ($api === 'lab_report_pdf') {
     $id = (int) ($_GET['id'] ?? 0);
     $stmt = $conn->prepare('

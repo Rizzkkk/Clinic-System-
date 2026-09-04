@@ -383,10 +383,8 @@ $canWriteAppt = can_access('appointments', 'write');
             }
         }
 
-        // Define helper functions first
         function isWalkInAppointment(appointment) {
-            // Check if this is a walk-in by looking at the reason field
-            // Walk-in appointments should have "Walk-in" or "walk-in" in the reason
+            // There is no walk-in flag on the row; the reason text is all we have to go on.
             const reason = String(appointment.reason || '').toLowerCase();
             const isWalkIn = reason.includes('walk-in') || reason.includes('walk in') || reason.includes('walkin');
             console.log(`Checking appointment - ID: ${appointment.id}, Reason: "${appointment.reason}" → Is Walk-in: ${isWalkIn}`);
@@ -619,7 +617,6 @@ $canWriteAppt = can_access('appointments', 'write');
             const now = new Date();
             walkInDate.value = now.toISOString().slice(0, 10);
             
-            // Format time as HH:MM for time input
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             walkInTime.value = `${hours}:${minutes}`;
@@ -787,7 +784,6 @@ $canWriteAppt = can_access('appointments', 'write');
                 return;
             }
 
-            // Filter out the excluded patient if specified
             const filteredPatients = excludePatientId 
                 ? patients.filter(p => String(p.id) !== String(excludePatientId))
                 : patients;
@@ -837,7 +833,6 @@ $canWriteAppt = can_access('appointments', 'write');
 
             const fullName = `${selectedPatient.firstName} ${selectedPatient.lastName}`.trim();
             
-            // Create a wrapper that shows the selected patient and filtered list
             walkInPatientList.innerHTML = `
                 <div class="rounded-xl border border-primary/30 bg-primary/5 p-4 mb-3">
                     <div class="flex items-start justify-between gap-3">
@@ -853,7 +848,6 @@ $canWriteAppt = can_access('appointments', 'write');
                 <div id="remainingPatientsList" class="space-y-2"></div>
             `;
 
-            // Render remaining patients (excluding the selected one)
             const remainingPatientsList = document.getElementById('remainingPatientsList');
             const remainingPatients = walkInPatientsCache.filter(p => String(p.id) !== String(patientId));
 
@@ -878,7 +872,6 @@ $canWriteAppt = can_access('appointments', 'write');
                     `;
                 }).join('');
 
-                // Attach click handlers to remaining patients
                 remainingPatientsList.querySelectorAll('.remaining-patient-btn').forEach((button) => {
                     button.addEventListener('click', () => {
                         walkInPatient.value = button.getAttribute('data-patient-id');
@@ -938,7 +931,6 @@ $canWriteAppt = can_access('appointments', 'write');
             walkInForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
 
-                // Validate required fields
                 if (!walkInPatient.value) {
                     showError('Please select a patient.');
                     walkInPatient.focus();
@@ -1000,7 +992,6 @@ $canWriteAppt = can_access('appointments', 'write');
                             toast.classList.remove('translate-y-0', 'opacity-100');
                         }, 3000);
 
-                        // Reset form
                         walkInForm.reset();
                         
                         // Small delay to ensure database is updated, then reload appointments and metrics
@@ -1020,7 +1011,6 @@ $canWriteAppt = can_access('appointments', 'write');
             });
         }
 
-        // Simple micro-interaction for the 'Book Slot' button
         const bookBtn = document.getElementById('bookSlotBtn');
         const toast = document.getElementById('toast');
 
@@ -1052,7 +1042,7 @@ $canWriteAppt = can_access('appointments', 'write');
             });
         }
 
-        // Expose test functions for debugging
+        // Manual console helpers for checking the walk-in flow.
         window.testWalkInFlow = async function() {
             console.log('=== WALK-IN TEST FLOW ===');
             console.log('1. Loading appointments to verify current state...');
@@ -1143,7 +1133,6 @@ $canWriteAppt = can_access('appointments', 'write');
                 const stats = await response.json();
                 console.log('Metrics loaded:', stats);
                 
-                // Update metrics in the UI
                 const todayAppointmentsCount = document.getElementById('todayAppointmentsCount');
                 const todayPercentageValue = document.getElementById('todayPercentageValue');
                 const pendingCheckinsCount = document.getElementById('pendingCheckinsCount');
@@ -1176,7 +1165,6 @@ $canWriteAppt = can_access('appointments', 'write');
             }
         }
 
-        // Initialize walk-ins table immediately on page load
         console.log('Page loaded - initializing walk-ins display');
         loadMetrics().then(() => {
             console.log('Metrics loaded');

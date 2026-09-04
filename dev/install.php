@@ -8,23 +8,19 @@ $dbUser = 'root';
 $dbPassword = '';
 $dbName = 'asclepius_db';
 
-// Try to connect without database first
 $conn = new mysqli($dbHost, $dbUser, $dbPassword);
 
 if ($conn->connect_error) {
     die('Failed to connect to MySQL: ' . $conn->connect_error);
 }
 
-// Create database if it doesn't exist
 $sql = "CREATE DATABASE IF NOT EXISTS $dbName CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
 if ($conn->query($sql) === FALSE) {
     die('Error creating database: ' . $conn->error);
 }
 
-// Select the database
 $conn->select_db($dbName);
 
-// SQL to create all tables
 $tables = [
     "CREATE TABLE IF NOT EXISTS users (
       id INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -208,7 +204,6 @@ foreach ($tables as $table) {
 
 $conn->close();
 
-// Display results
 ?>
 <!DOCTYPE html>
 <html lang="en">

@@ -5,7 +5,7 @@
 //
 // Usage (as the first element inside <body> of each page): set $active to the current page's
 // module key (or 'dashboard'), then require this file. $active highlights the active link.
-// NOTE: do not write a literal PHP close tag in this comment — it would end the PHP block early.
+// NOTE: do not write a literal PHP close tag in this comment - it would end the PHP block early.
 //
 // Styling uses only universal Tailwind classes (text-white/opacity utilities), so it renders
 // identically regardless of each page's custom Tailwind theme config. All pages load Tailwind

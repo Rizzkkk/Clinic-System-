@@ -21,7 +21,7 @@ echo [2/3] Loading tables...
 
 echo [3/3] Starting web server...
 echo.
-echo   Open your browser to:  http://localhost:8000/register.php
+echo   Open your browser to:  http://localhost:8000/index.php
 echo   Keep this window OPEN. Close it (or press Ctrl+C) to stop the server.
 echo.
 "%PHP%" -S localhost:8000

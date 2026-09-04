@@ -12,7 +12,7 @@ require_once __DIR__ . '/../lib/response.php';
 require_once __DIR__ . '/../auth/rbac.php';
 require_module_access('medical_records');
 
-// ----- Writes -------------------------------------------------------------
+// Writes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
 
@@ -105,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     json_fail('Unknown action.');
 }
 
-// ----- Reads --------------------------------------------------------------
+// Reads
 $api = $_GET['api'] ?? '';
 
 if ($api === 'get_records') {

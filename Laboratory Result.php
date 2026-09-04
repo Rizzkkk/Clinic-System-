@@ -10,7 +10,7 @@ require_once __DIR__ . '/backend/auth/rbac.php';
 require_module_access('laboratory_results');
 $canWriteLab = can_access('laboratory_results', 'write');
 
-// --- Server-rendered table data below (uses $conn from bootstrap) ---
+// Table data rendered server-side below, using $conn from bootstrap.
 function h($value) {
     return htmlspecialchars((string)($value ?? ''), ENT_QUOTES, 'UTF-8');
 }

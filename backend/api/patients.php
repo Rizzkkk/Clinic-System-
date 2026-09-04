@@ -18,7 +18,7 @@ require_once __DIR__ . '/../lib/validation.php';
 require_once __DIR__ . '/../auth/rbac.php';
 require_module_access('patients');
 
-// ----- Writes -------------------------------------------------------------
+// Writes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
 
@@ -187,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     json_fail('Unknown action.');
 }
 
-// ----- Reads --------------------------------------------------------------
+// Reads
 $api = $_GET['api'] ?? '';
 
 if ($api === 'get_patients') {
@@ -207,7 +207,7 @@ if ($api === 'get_stats') {
 }
 
 if ($api === 'get_contacts') {
-    // Fixed: was raw string interpolation (WHERE patientId = $patientId). Now parameterized.
+    // Bound, not interpolated: this WHERE clause used to be built by string concatenation.
     $patientId = (int) ($_GET['patientId'] ?? 0);
     $stmt = $conn->prepare('SELECT * FROM patient_contacts WHERE patientId = ? ORDER BY isPrimary DESC, created_at DESC');
     $stmt->bind_param('i', $patientId);

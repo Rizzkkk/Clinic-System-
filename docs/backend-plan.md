@@ -62,7 +62,10 @@ backend/
 6. **CSRF on every write.** Every POST `action` calls `csrf_check()` before touching the DB.
 7. **No leaked errors.** Handlers return a generic message; real `$stmt->error` goes to the
    server log, never the JSON response.
-8. **Preserve the API contract.** The `?api=` / POST `action` names and JSON shapes stay the
+8. **Comments say why, not what.** Plain English, no restating the syntax
+   (`// close modal on Escape`). Comment a non-obvious decision, a constraint, or a past bug;
+   otherwise write none.
+9. **Preserve the API contract.** The `?api=` / POST `action` names and JSON shapes stay the
    same so the frontend keeps working — see [api-reference.md](api-reference.md).
 
 ## How one module splits
