@@ -16,23 +16,33 @@
 }
 
 :root {
-  --teal: #0aa6a6;
-  --teal-dark: #00685d;
-  --teal-bright: #2bb18f;
-  --teal-hover: #259676;
-  --navy: #0b2545;
-  --ink: #1d2433;
-  --muted: #5f6f8d;
-  --surface: #f4f6fb;
+  /* The palette moved from teal to the cyan/sky/navy system used by the landing-page
+   * design (2026-09-11). The --teal-* names are kept because portal.css consumes them;
+   * renaming would mean editing both files for no visual gain. */
+  --teal: #0891b2;
+  --teal-dark: #0e7490;
+  --teal-bright: #0891b2;
+  --teal-hover: #0e7490;
+  --navy: #0f172a;
+  --ink: #1e293b;
+  --muted: #475569;
+  --surface: #f8fafc;
   --white: #ffffff;
-  --hp-red: #c41e3a;
+  --hp-red: #dc2626;
 
-  --teal-soft: rgba(10, 166, 166, 0.1);
-  --line: rgba(201, 206, 216, 0.85);
-  --radius: 14px;
-  --radius-sm: 8px;
-  --shadow-sm: 0 6px 20px rgba(29, 36, 51, 0.06);
-  --shadow-lg: 0 18px 45px rgba(29, 36, 51, 0.12);
+  --sky: #0284c7;
+  --blue: #1d4ed8;
+  --emerald: #059669;
+  /* the headline/CTA gradient the design leans on; kept as one token so the two
+   * places that paint it cannot drift apart */
+  --brand-gradient: linear-gradient(to right, #0891b2, #0284c7, #1d4ed8);
+
+  --teal-soft: rgba(8, 145, 178, 0.1);
+  --line: #e2e8f0;
+  --radius: 16px;
+  --radius-sm: 12px;
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 30px rgba(15, 23, 42, 0.09), 0 2px 8px rgba(15, 23, 42, 0.04);
 }
 
 html {
@@ -214,8 +224,56 @@ a {
 .hero {
   padding: 3.5rem 0 3rem;
   background:
-    radial-gradient(circle at 85% 15%, rgba(43, 177, 143, 0.14), transparent 55%),
-    var(--surface);
+    radial-gradient(circle at 78% 12%, rgba(8, 145, 178, 0.16), transparent 58%),
+    linear-gradient(to bottom, var(--surface), rgba(236, 254, 255, 0.5) 40%, var(--white));
+}
+
+/* Accreditation pill above the headline. Replaces the plain uppercase eyebrow in the
+ * hero only; .eyebrow is still used as-is by the sections further down the page. */
+.hero .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  background: rgba(207, 250, 254, 0.7);
+  border: 1px solid rgba(165, 243, 252, 0.9);
+  color: #164e63;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.8rem;
+}
+
+.hero .eyebrow::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--teal);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero .eyebrow::before { animation: none; }
+}
+
+/* Gradient-filled words in the headline. Falls back to the solid brand colour where
+ * background-clip:text is unsupported. */
+.grad-text {
+  color: var(--teal);
+}
+
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .grad-text {
+    background: var(--brand-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
 }
 
 .hero-grid {
@@ -226,10 +284,11 @@ a {
 }
 
 .hero-copy h1 {
-  font-size: clamp(1.9rem, 4vw, 3rem);
+  font-size: clamp(2rem, 4.4vw, 3.4rem);
   font-weight: 800;
-  line-height: 1.14;
-  letter-spacing: -0.01em;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: var(--navy);
   margin-bottom: 1rem;
 }
 
@@ -343,6 +402,7 @@ a {
   border-radius: var(--radius-sm);
   background: var(--white);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .trust-item:hover {
@@ -376,7 +436,7 @@ a {
 
 .stats-band {
   padding: 2.5rem 0;
-  background: linear-gradient(135deg, var(--teal-dark) 0%, var(--teal) 100%);
+  background: var(--brand-gradient);
   color: var(--white);
 }
 
@@ -460,6 +520,7 @@ a {
   border: 1px solid var(--line);
   background: var(--white);
   transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  box-shadow: var(--shadow-sm);
 }
 
 .service-card:hover {
@@ -751,34 +812,43 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0.8rem 1.5rem;
-  border-radius: 999px;
-  border: 2px solid transparent;
+  gap: 0.55rem;
+  padding: 0.85rem 1.6rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
   font-family: inherit;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease, transform 0.1s ease;
+}
+
+.btn:active {
+  transform: scale(0.97);
 }
 
 .btn-primary {
-  background: var(--teal-bright);
+  background: var(--brand-gradient);
   color: var(--white);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-primary:hover {
-  background: var(--teal-hover);
+  /* the gradient cannot be transitioned, so hover deepens the shadow instead */
+  box-shadow: 0 10px 24px rgba(8, 145, 178, 0.28);
 }
 
 .btn-outline {
-  background: transparent;
-  color: var(--teal-dark);
-  border-color: rgba(10, 166, 166, 0.45);
+  background: var(--white);
+  color: var(--ink);
+  border-color: var(--line);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn-outline:hover {
-  background: var(--teal-soft);
-  border-color: var(--teal);
+  background: #f1f5f9;
+  color: var(--teal-dark);
 }
 
 .btn-outline-light {

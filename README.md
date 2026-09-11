@@ -22,8 +22,14 @@ the repo root (`Patient.php`, `Appointment.php`, ...), each delegating `?api=` a
 `index.html`, `src/`, `package.json` and `vite.config.js` are a React 19 + Tailwind v4 + Vite
 landing page merged from the `landing-page` branch. **It is not built and not deployed** - the
 project is deliberately no-build-step, and `.htaccess` pins `DirectoryIndex` to `index.php` so
-the PHP site keeps serving. The tree is kept so its visual design can be ported into the PHP
-public pages (`index.php`, `frontend/assets/css/landing.css`).
+the PHP site keeps serving. **Its design was ported into the PHP public pages on 2026-09-11**
+(`index.php`, `frontend/assets/css/landing.css`); the tree stays as the reference for that work.
+
+Its **content was not ported and must not be.** Every component is marked
+`@status Development / Staging` over `STUB DATA`: invented physicians with credentials, room
+numbers and consultation schedules, and twelve named real HMO companies listed as accredited
+partners. The Doctors and HMO sections stay unbuilt until the owner supplies the real roster and
+accreditation list.
 
 All nine components are written and wired into `src/App.jsx`:
 

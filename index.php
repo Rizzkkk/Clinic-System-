@@ -24,7 +24,7 @@ require __DIR__ . '/frontend/partials/public-header.php';
       <div class="wrap hero-grid">
         <div class="hero-copy">
           <p class="eyebrow">DOH-licensed clinic &amp; diagnostic laboratory</p>
-          <h1>Among the Philippines' most trusted checkup and laboratory centres</h1>
+          <h1>Among the Philippines' most trusted <span class="grad-text">checkup and laboratory</span> centres</h1>
           <p class="hero-lead">
             Annual physical exams, blood work, imaging and OFW pre-deployment medicals, handled by
             licensed physicians and medical technologists, with results you can read online.
