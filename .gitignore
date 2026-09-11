@@ -31,3 +31,11 @@ Thumbs.db
 /CLAUDE.md
 /CHANGELOG.md
 /.claude/
+
+# Landing page (React/Vite source merged from the landing-page branch).
+# The app is not built or served today - index.php remains the public site -
+# but the source tree is kept so the design can be ported from it.
+node_modules/
+dist/
+dist-ssr/
+*.local

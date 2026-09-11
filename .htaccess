@@ -1,0 +1,9 @@
+# index.html at the repo root is the unbuilt Vite shell from the landing-page
+# branch; it loads /src/main.jsx, which a browser cannot execute without a build.
+# Apache's stock DirectoryIndex prefers index.html over index.php, so without
+# this line the public homepage would serve that broken shell. The PHP site is
+# the one that ships — pin it explicitly.
+
+<IfModule mod_dir.c>
+    DirectoryIndex index.php index.html
+</IfModule>
