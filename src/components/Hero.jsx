@@ -1,3 +1,12 @@
+/**
+ * @fileoverview Asclepius Medical & Diagnostic Group Inc.
+ * @description Component currently populated with mock clinical data for design review and layout verification.
+ * 
+ * @todo Replace mock values with finalized copy and clinical schedule upon client approval.
+ * @author Engineering Team
+ * @status Development / Staging
+ */
+
 import React from 'react';
 import { 
   Calendar, 

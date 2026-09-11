@@ -1,3 +1,12 @@
+/**
+ * @fileoverview Asclepius Medical & Diagnostic Group Inc.
+ * @description Component currently populated with mock clinical data for design review and layout verification.
+ * 
+ * @todo Replace mock values with finalized copy and clinical schedule upon client approval.
+ * @author Engineering Team
+ * @status Development / Staging
+ */
+
 import React, { useState } from 'react';
 import { 
   Phone, 
@@ -25,6 +34,12 @@ export default function Navbar({ onOpenAppointment }) {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md shadow-xs border-b border-slate-100 transition-all">
+      {/* Staging / MVP Demo Banner */}
+      <div className="bg-amber-500/10 border-b border-amber-500/20 text-amber-900 px-4 py-1 text-center text-xs font-semibold flex items-center justify-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+        <span>[STAGING PREVIEW] Content, doctor schedules, and contact numbers are mock placeholders for client review.</span>
+      </div>
+
       {/* Top Utility Bar */}
       <div className="bg-slate-900 text-slate-300 text-xs py-2 px-4 sm:px-8 border-b border-slate-800">
         <div className="max-w-350 mx-auto flex flex-wrap justify-between items-center gap-3">
